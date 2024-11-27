@@ -152,14 +152,7 @@ CREATE TABLE Equipment (
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(255),
     Condition VARCHAR(255),
-    Stock_QuaName VARCHAR(255),
-    Description TEXT,
-    Status VARCHAR(255),
-    Outcome TEXT,
-    Complainer_ID BIGINT,
-    FOREIGN KEY (Complainer_ID) REFERENCES Patients(ID)
-);
-ntity INT,
+    Stock_Quantity INT,
     Department_ID INT,
     FOREIGN KEY (Department_ID) REFERENCES Departments(ID)
 );
@@ -167,4 +160,10 @@ ntity INT,
 -- Complaints Table
 CREATE TABLE Complaints (
     ID INT AUTO_INCREMENT PRIMARY KEY,
-    Department_
+    Department_Name VARCHAR(255),
+    Description TEXT,
+    Status VARCHAR(255),
+    Outcome TEXT,
+    Complainer_ID BIGINT,
+    FOREIGN KEY (Complainer_ID) REFERENCES Patients(ID)
+);
