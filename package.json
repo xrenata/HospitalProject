@@ -1,4 +1,7 @@
 {
+  "scripts":{
+    "dev": "nodemon app.js"
+  },
   "main": "app.js",
   "dependencies": {
     "body-parser": "^1.20.3",

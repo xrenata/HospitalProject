@@ -16,3 +16,5 @@ app.use('/api', router);
 app.listen(PORT, () => {
     console.log(`Backend on: http://${process.env.HOST}:${PORT}`);
 });
+
+module.exports = router;
