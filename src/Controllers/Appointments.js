@@ -38,7 +38,7 @@ const updateAppointment = (req, res) => {
 
 const deleteAppointment = (req, res) => {
     const { appointment_id } = req.params;
-    const sql = `DELETE FROM Appointments WHERE ID = ?`; // TODO : check if it's Appointment_ID
+    const sql = `DELETE FROM Appointments WHERE ID = ?`; // TODO : check if it's Appointment_ID -hasan: bi burda mı aklına geldi knk
     db.query(sql, appointment_id, (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
         res.status(200).json({ message: 'Appointment deleted successfully' });

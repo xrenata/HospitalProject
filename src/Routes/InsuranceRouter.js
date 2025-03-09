@@ -1,17 +1,243 @@
 const express = require('express');
 const router = express.Router();
-const {
-    getAllInsurance,
-    getInsurance,
-    createInsurance,
-    updateInsurance,
-    deleteInsurance
-} = require('../Controllers/Insurance');
+const InsuranceController = require('../Controllers/Insurance');
 
-router.get('/insurance', getAllInsurance);
-router.get('/insurance/:insurance_id', getInsurance);
-router.post('/insurance', createInsurance);
-router.put('/insurance/:insurance_id', updateInsurance);
-router.delete('/insurance/:insurance_id', deleteInsurance);
+/**
+ * @swagger
+ * /api/insurance:
+ *   get:
+ *     summary: List all insurance policies.
+ *     tags:
+ *       - Insurance
+ *     responses:
+ *       200:
+ *         description: Successful retrieval of insurance policies
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     example: "abc123"
+ *                   policyNumber:
+ *                     type: string
+ *                     example: "POL-00123"
+ *                   provider:
+ *                     type: string
+ *                     example: "Insurance Co."
+ *                   coverage:
+ *                     type: string
+ *                     example: "Full"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Database query failed"
+ */
+router.get('/', InsuranceController.getAllInsurance);
+
+/**
+ * @swagger
+ * /api/insurance:
+ *   post:
+ *     summary: Create a new insurance policy.
+ *     tags:
+ *       - Insurance
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               policyNumber:
+ *                 type: string
+ *                 example: "POL-00123"
+ *               provider:
+ *                 type: string
+ *                 example: "Insurance Co."
+ *               coverage:
+ *                 type: string
+ *                 example: "Full"
+ *     responses:
+ *       201:
+ *         description: Insurance policy created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   example: "abc123"
+ *                 policyNumber:
+ *                   type: string
+ *                   example: "POL-00123"
+ *                 provider:
+ *                   type: string
+ *                   example: "Insurance Co."
+ *                 coverage:
+ *                   type: string
+ *                   example: "Full"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Database query failed"
+ */
+router.post('/', InsuranceController.createInsurance);
+
+/**
+ * @swagger
+ * /api/insurance/{id}:
+ *   get:
+ *     summary: Get a specific insurance policy.
+ *     tags:
+ *       - Insurance
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The insurance policy ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Successful retrieval of insurance policy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   example: "abc123"
+ *                 policyNumber:
+ *                   type: string
+ *                   example: "POL-00123"
+ *                 provider:
+ *                   type: string
+ *                   example: "Insurance Co."
+ *                 coverage:
+ *                   type: string
+ *                   example: "Full"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Database query failed"
+ */
+router.get('/:id', InsuranceController.getInsurance);
+
+/**
+ * @swagger
+ * /api/insurance/{id}:
+ *   put:
+ *     summary: Update a specific insurance policy.
+ *     tags:
+ *       - Insurance
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The insurance policy ID
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               policyNumber:
+ *                 type: string
+ *                 example: "POL-00123"
+ *               provider:
+ *                 type: string
+ *                 example: "Insurance Co."
+ *               coverage:
+ *                 type: string
+ *                 example: "Full"
+ *     responses:
+ *       200:
+ *         description: Insurance policy updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   example: "abc123"
+ *                 policyNumber:
+ *                   type: string
+ *                   example: "POL-00123"
+ *                 provider:
+ *                   type: string
+ *                   example: "Insurance Co."
+ *                 coverage:
+ *                   type: string
+ *                   example: "Full"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Database query failed"
+ */
+router.put('/:id', InsuranceController.updateInsurance);
+
+/**
+ * @swagger
+ * /api/insurance/{id}:
+ *   delete:
+ *     summary: Delete a specific insurance policy.
+ *     tags:
+ *       - Insurance
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The insurance policy ID
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: Insurance policy deleted successfully
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Database query failed"
+ */
+router.delete('/:id', InsuranceController.deleteInsurance);
 
 module.exports = router;
