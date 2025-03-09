@@ -54,13 +54,7 @@ To run this project, you need the following installed on your machine:
    PORT=3000
    ```
 
-5. Apply migrations to set up the database schema:
-
-   ```bash
-   npx sequelize-cli db:migrate
-   ```
-
-6. Start the server:
+7. Start the server:
 
    ```bash
    npm start
