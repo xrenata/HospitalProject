@@ -167,3 +167,11 @@ CREATE TABLE Complaints (
     Complainer_ID BIGINT,
     FOREIGN KEY (Complainer_ID) REFERENCES Patients(ID)
 );
+
+-- Users Table
+CREATE TABLE Users (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Username VARCHAR(255) UNIQUE,
+    Password VARCHAR(255),
+    PermLevel INT DEFAULT 0
+);

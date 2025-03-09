@@ -1,20 +1,24 @@
 const express = require("express");
 const router = express.Router();
+const { authenticateToken, authorizePermLevel } = require('../Modules/Functions/authMiddleware');
 
-router.use("/appointments", require("./AppointmentsRouter"));
-router.use("/complaints", require("./ComplaintsRouter"));
-router.use("/departments", require("./DepartmentsRouter"));
-router.use("/equipment", require("./EquipmentRouter"));
-router.use("/hospitals", require("./HospitalsRouter"));
-router.use("/insurance", require("./InsuranceRouter"));
-router.use("/medications", require("./MedicationsRouter"));
-router.use("/patients", require("./PatientsRouter"));
-router.use("/rooms", require("./RoomsRouter")); 
-router.use("/staff-department", require("./Staff_DepartmentRouter"));
-router.use("/staff", require("./StaffRouter"));
-router.use("/surgeries", require("./SurgeriesRouter"));
-router.use("/surgery-team", require("./Surgery_TeamRouter"));
-router.use("/tests", require("./TestsRouter"));
-router.use("/treatments", require("./TreatmentsRouter"));
+router.use("/auth", require("./AuthRouter")); // Ensure /auth routes are not protected
+router.use(authenticateToken); // Protect all routes below this line
+
+router.use("/appointments", authorizePermLevel(1), require("./AppointmentsRouter"));
+router.use("/complaints", authorizePermLevel(1), require("./ComplaintsRouter"));
+router.use("/departments", authorizePermLevel(2), require("./DepartmentsRouter"));
+router.use("/equipment", authorizePermLevel(2), require("./EquipmentRouter"));
+router.use("/hospitals", authorizePermLevel(3), require("./HospitalsRouter"));
+router.use("/insurance", authorizePermLevel(2), require("./InsuranceRouter"));
+router.use("/medications", authorizePermLevel(2), require("./MedicationsRouter"));
+router.use("/patients", authorizePermLevel(1), require("./PatientsRouter"));
+router.use("/rooms", authorizePermLevel(2), require("./RoomsRouter")); 
+router.use("/staff-department", authorizePermLevel(3), require("./Staff_DepartmentRouter"));
+router.use("/staff", authorizePermLevel(3), require("./StaffRouter"));
+router.use("/surgeries", authorizePermLevel(2), require("./SurgeriesRouter"));
+router.use("/surgery-team", authorizePermLevel(2), require("./Surgery_TeamRouter"));
+router.use("/tests", authorizePermLevel(1), require("./TestsRouter"));
+router.use("/treatments", authorizePermLevel(1), require("./TreatmentsRouter"));
 
 module.exports = router;
