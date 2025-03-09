@@ -184,12 +184,13 @@ I've reorganized the API endpoints by resource type and ensured consistent forma
 
 ```plaintext
 hospital-backend/src
-├── Setup/           # Sequelize models (e.g., Patient, Staff)
-├── Routes/          # API endpoint routes
-├── Controllers/     # Business logic controllers
-├── .env             # Environment variables file
-├── package.json     # Project metadata and dependencies
-└── README.md        # Documentation
+├── src/
+    ├── Routes/          # API endpoint routes
+    ├── Controllers/     # Business logic controllers
+    └── Modules/         # Helpers
+├── .env                 # Environment variables file
+├── package.json         # Project metadata and dependencies
+└── README.md            # Documentation
 ```
 
 ## Technologies Used
