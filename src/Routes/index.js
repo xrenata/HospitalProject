@@ -20,5 +20,9 @@ router.use("/surgeries", authorizePermLevel(2), require("./SurgeriesRouter"));
 router.use("/surgery-team", authorizePermLevel(2), require("./Surgery_TeamRouter"));
 router.use("/tests", authorizePermLevel(1), require("./TestsRouter"));
 router.use("/treatments", authorizePermLevel(1), require("./TreatmentsRouter"));
+router.use("/visits", authorizePermLevel(2), require("./VisitsRouter"));
+router.use("/prescriptions", authorizePermLevel(1), require("./PrescriptionsRouter"));
+router.use("/shifts", authorizePermLevel(2), require("./ShiftsRouter"));
+router.use("/feedback", authorizePermLevel(1), require("./FeedbackRouter"));
 
 module.exports = router;

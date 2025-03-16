@@ -23,7 +23,9 @@ CREATE TABLE Patients (
     Blood_Type VARCHAR(10),
     Appointment_Info VARCHAR(255),
     Weight FLOAT,
-    Height FLOAT
+    Height FLOAT,
+    Date_Of_Birth DATE,
+    Emergency_Contact VARCHAR(255)
 );
 
 -- Staff Table
@@ -38,6 +40,8 @@ CREATE TABLE Staff (
     Leave_Status VARCHAR(255),
     Salary DECIMAL(10, 2),
     Working_Hours TEXT,
+    Date_Of_Birth DATE,
+    Emergency_Contact VARCHAR(255),
     FOREIGN KEY (Hospital_ID) REFERENCES Hospital(ID)
 );
 
@@ -174,4 +178,46 @@ CREATE TABLE Users (
     Username VARCHAR(255) UNIQUE,
     Password VARCHAR(255),
     PermLevel INT DEFAULT 0
+);
+
+-- Visits Table
+CREATE TABLE Visits (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Patient_ID BIGINT,
+    Visit_Date DATE,
+    Reason TEXT,
+    FOREIGN KEY (Patient_ID) REFERENCES Patients(ID)
+);
+
+-- Prescriptions Table
+CREATE TABLE Prescriptions (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Patient_ID BIGINT,
+    Medication_ID INT,
+    Dosage VARCHAR(255),
+    Start_Date DATE,
+    End_Date DATE,
+    FOREIGN KEY (Patient_ID) REFERENCES Patients(ID),
+    FOREIGN KEY (Medication_ID) REFERENCES Medications(ID)
+);
+
+-- Shifts Table
+CREATE TABLE Shifts (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Staff_ID BIGINT,
+    Shift_Start DATETIME,
+    Shift_End DATETIME,
+    FOREIGN KEY (Staff_ID) REFERENCES Staff(ID)
+);
+
+-- Feedback Table
+CREATE TABLE Feedback (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Patient_ID BIGINT,
+    Staff_ID BIGINT,
+    Feedback_Date DATE,
+    Comments TEXT,
+    Rating INT,
+    FOREIGN KEY (Patient_ID) REFERENCES Patients(ID),
+    FOREIGN KEY (Staff_ID) REFERENCES Staff(ID)
 );
