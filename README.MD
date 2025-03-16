@@ -174,6 +174,13 @@ I've reorganized the API endpoints by resource type and ensured consistent forma
 | `PORT`            | Port number for the Express server  | `3000`               |
 | `JWT_SECRET`            | Secret key for jwt signature  | `secret`               |
 
+
+## Database Schema
+
+Below is the database schema for the Hospital Backend API:
+
+![Database Schema](./src/Modules/Setup/Database.png)
+
 ## Project Structure
 
 ```plaintext
