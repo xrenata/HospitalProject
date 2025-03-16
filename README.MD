@@ -160,7 +160,43 @@ I've reorganized the API endpoints by resource type and ensured consistent forma
 | PUT | `/api/insurance/{id}` | Update a specific insurance policy |
 | DELETE | `/api/insurance/{id}` | Delete a specific insurance policy |
 
-**Swagger:** You can reach full documantation from [Swagger](http://localhost:3000/api-docs) on your local.
+## Visits
+| HTTP Method | Endpoint | Description |
+|------------|----------|-------------|
+| GET | `/api/visits` | List all visits |
+| GET | `/api/visits/{id}` | Get a specific visit |
+| POST | `/api/visits` | Create a new visit |
+| PUT | `/api/visits/{id}` | Update a specific visit |
+| DELETE | `/api/visits/{id}` | Delete a specific visit |
+
+## Prescriptions
+| HTTP Method | Endpoint | Description |
+|------------|----------|-------------|
+| GET | `/api/prescriptions` | List all prescriptions |
+| GET | `/api/prescriptions/{id}` | Get a specific prescription |
+| POST | `/api/prescriptions` | Create a new prescription |
+| PUT | `/api/prescriptions/{id}` | Update a specific prescription |
+| DELETE | `/api/prescriptions/{id}` | Delete a specific prescription |
+
+## Shifts
+| HTTP Method | Endpoint | Description |
+|------------|----------|-------------|
+| GET | `/api/shifts` | List all shifts |
+| GET | `/api/shifts/{id}` | Get a specific shift |
+| POST | `/api/shifts` | Create a new shift |
+| PUT | `/api/shifts/{id}` | Update a specific shift |
+| DELETE | `/api/shifts/{id}` | Delete a specific shift |
+
+## Feedback
+| HTTP Method | Endpoint | Description |
+|------------|----------|-------------|
+| GET | `/api/feedback` | List all feedback |
+| GET | `/api/feedback/{id}` | Get a specific feedback |
+| POST | `/api/feedback` | Create a new feedback |
+| PUT | `/api/feedback/{id}` | Update a specific feedback |
+| DELETE | `/api/feedback/{id}` | Delete a specific feedback |
+
+**Swagger:** You can reach full documentation from [Swagger](http://localhost:3000/api-docs) on your local.
 
 ## Environment Variables Table
 
@@ -211,4 +247,4 @@ hospital-backend/src
 
 ## Contact
 
-If you encounter any issues or have suggestions, feel free to reach out at: ![Emirhan](https://lantern.rest/api/v1/users/937316083533230110?svg=1) ![HasanBocek](https://lantern.rest/api/v1/users/903614114662858814?svg=1) 
+If you encounter any issues or have suggestions, feel free to reach out at: ![Emirhan](https://lantern.rest/api/v1/users/937316083533230110?svg=1) ![HasanBocek](https://lantern.rest/api/v1/users/903614114662858814?svg=1)
