@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../Modules/Database/db');
+const { executeQuery } = require('../Modules/Database/queryHelper');
 
 /**
  * @swagger
@@ -143,29 +144,57 @@ router.post('/register', async (req, res) => {
  */
 router.post('/login', (req, res) => {
     const { username, password } = req.body;
+    console.log('Login attempt with:', req.body);
+    
     if (!username || !password) {
         return res.status(400).json({ message: 'Missing required fields' });
     }
-    const sql = `SELECT * FROM Users WHERE username = ?`;
-    db.query(sql, [username], async (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (result.length === 0) return res.status(400).json({ message: 'Invalid credentials' });
+    
+    const sql = `SELECT * FROM Users WHERE Username = ?`;
+    
+    executeQuery(sql, [username], async (err, result) => {
+        if (err) {
+            console.error('Database error during login:', err);
+            return res.status(500).json({ error: 'Database error during login' });
+        }
+        
+        if (result.length === 0) {
+            console.log('Invalid credentials: User not found');
+            return res.status(400).json({ message: 'Invalid credentials' });
+        }
 
         const user = result[0];
-        console.log(user);
+        console.log('User found:', {
+            id: user.ID,
+            username: user.Username,
+            hasPassword: !!user.Password,
+            permLevel: user.PermLevel
+        });
+        
         if (!user.Password) {
+            console.log('Invalid credentials: No password set');
             return res.status(400).json({ message: 'Invalid credentials' });
-            
         }
+        
         try {
             const validPassword = await bcrypt.compare(password, user.Password);
-            console.log(validPassword);
-            if (!validPassword) return res.status(400).json({ message: 'Invalid credentials' });
+            console.log('Password valid:', validPassword);
+            
+            if (!validPassword) {
+                return res.status(400).json({ message: 'Invalid credentials' });
+            }
 
-            const token = jwt.sign({ id: user.id, username: user.username, permLevel: user.permLevel }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            const token = jwt.sign({ 
+                id: user.ID, 
+                username: user.Username, 
+                permLevel: user.PermLevel 
+            }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            
+            console.log('Generated token for user:', user.Username);
             res.json({ token });
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            console.error('Error during password comparison:', error);
+            res.status(500).json({ error: 'Error during authentication' });
         }
     });
 });

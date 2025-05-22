@@ -29,15 +29,18 @@ const swaggerDocs = swaggerJsdoc(swaggerOptions);
 // Control Projects Variables
 Project.requireCheck();
 
+// Apply CORS middleware first (before routes)
+app.use(cors({
+  origin: ['http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Origin'],
+}));
+
 // App Config
 app.use(express.json());
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use('/api', router);
-app.use(cors({
-  origin: 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
 
 app.listen(PORT, () => {
     console.log(`Backend on: http://${process.env.HOST}:${PORT}`);
