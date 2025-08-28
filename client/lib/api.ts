@@ -202,6 +202,299 @@ export const testsAPI = {
   getStats: () => api.get('/tests/stats'),
 };
 
+// Visits API
+export const visitsAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    patientId?: string;
+    staffId?: string;
+    date?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.patientId) queryParams.append('patientId', params.patientId);
+    if (params?.staffId) queryParams.append('staffId', params.staffId);
+    if (params?.date) queryParams.append('date', params.date);
+
+    const queryString = queryParams.toString();
+    return api.get(`/visits${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/visits/${id}`),
+  create: (data: any) => api.post('/visits', data),
+  update: (id: string, data: any) => api.put(`/visits/${id}`, data),
+  delete: (id: string) => api.delete(`/visits/${id}`),
+};
+
+// Treatments API
+export const treatmentsAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    patientId?: string;
+    staffId?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.patientId) queryParams.append('patientId', params.patientId);
+    if (params?.staffId) queryParams.append('staffId', params.staffId);
+
+    const queryString = queryParams.toString();
+    return api.get(`/treatments${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/treatments/${id}`),
+  create: (data: any) => api.post('/treatments', data),
+  update: (id: string, data: any) => api.put(`/treatments/${id}`, data),
+  delete: (id: string) => api.delete(`/treatments/${id}`),
+};
+
+// Prescriptions API
+export const prescriptionsAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    patientId?: string;
+    staffId?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.patientId) queryParams.append('patientId', params.patientId);
+    if (params?.staffId) queryParams.append('staffId', params.staffId);
+
+    const queryString = queryParams.toString();
+    return api.get(`/prescriptions${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/prescriptions/${id}`),
+  create: (data: any) => api.post('/prescriptions', data),
+  update: (id: string, data: any) => api.put(`/prescriptions/${id}`, data),
+  delete: (id: string) => api.delete(`/prescriptions/${id}`),
+};
+
+// Surgeries API
+export const surgeriesAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    patientId?: string;
+    surgeonId?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.patientId) queryParams.append('patientId', params.patientId);
+    if (params?.surgeonId) queryParams.append('surgeonId', params.surgeonId);
+
+    const queryString = queryParams.toString();
+    return api.get(`/surgeries${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/surgeries/${id}`),
+  create: (data: any) => api.post('/surgeries', data),
+  update: (id: string, data: any) => api.put(`/surgeries/${id}`, data),
+  delete: (id: string) => api.delete(`/surgeries/${id}`),
+};
+
+// Shifts API
+export const shiftsAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    staffId?: string;
+    date?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.staffId) queryParams.append('staffId', params.staffId);
+    if (params?.date) queryParams.append('date', params.date);
+
+    const queryString = queryParams.toString();
+    return api.get(`/shifts${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/shifts/${id}`),
+  create: (data: any) => api.post('/shifts', data),
+  update: (id: string, data: any) => api.put(`/shifts/${id}`, data),
+  delete: (id: string) => api.delete(`/shifts/${id}`),
+};
+
+// Surgery Teams API
+export const surgeryTeamsAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    surgeryId?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.surgeryId) queryParams.append('surgeryId', params.surgeryId);
+
+    const queryString = queryParams.toString();
+    return api.get(`/surgery-team${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/surgery-team/${id}`),
+  create: (data: any) => api.post('/surgery-team', data),
+  update: (id: string, data: any) => api.put(`/surgery-team/${id}`, data),
+  delete: (id: string) => api.delete(`/surgery-team/${id}`),
+};
+
+// Medications API
+export const medicationsAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category?: string;
+    status?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.status) queryParams.append('status', params.status);
+
+    const queryString = queryParams.toString();
+    return api.get(`/medications${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/medications/${id}`),
+  create: (data: any) => api.post('/medications', data),
+  update: (id: string, data: any) => api.put(`/medications/${id}`, data),
+  delete: (id: string) => api.delete(`/medications/${id}`),
+};
+
+// Equipment API
+export const equipmentAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    departmentId?: string;
+    status?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.departmentId) queryParams.append('departmentId', params.departmentId);
+    if (params?.status) queryParams.append('status', params.status);
+
+    const queryString = queryParams.toString();
+    return api.get(`/equipment${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/equipment/${id}`),
+  create: (data: any) => api.post('/equipment', data),
+  update: (id: string, data: any) => api.put(`/equipment/${id}`, data),
+  delete: (id: string) => api.delete(`/equipment/${id}`),
+};
+
+// Complaints API
+export const complaintsAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    category?: string;
+    priority?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.priority) queryParams.append('priority', params.priority);
+
+    const queryString = queryParams.toString();
+    return api.get(`/complaints${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/complaints/${id}`),
+  create: (data: any) => api.post('/complaints', data),
+  update: (id: string, data: any) => api.put(`/complaints/${id}`, data),
+  delete: (id: string) => api.delete(`/complaints/${id}`),
+};
+
+// Feedback API
+export const feedbackAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category?: string;
+    rating?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.rating) queryParams.append('rating', params.rating.toString());
+
+    const queryString = queryParams.toString();
+    return api.get(`/feedback${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/feedback/${id}`),
+  create: (data: any) => api.post('/feedback', data),
+  update: (id: string, data: any) => api.put(`/feedback/${id}`, data),
+  delete: (id: string) => api.delete(`/feedback/${id}`),
+};
+
+// Insurance API
+export const insuranceAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status) queryParams.append('status', params.status);
+
+    const queryString = queryParams.toString();
+    return api.get(`/insurance${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => api.get(`/insurance/${id}`),
+  create: (data: any) => api.post('/insurance', data),
+  update: (id: string, data: any) => api.put(`/insurance/${id}`, data),
+  delete: (id: string) => api.delete(`/insurance/${id}`),
+};
+
+// Hospital API
+export const hospitalAPI = {
+  getAll: () => api.get('/hospitals'),
+  getById: (id: string) => api.get(`/hospitals/${id}`),
+  create: (data: any) => api.post('/hospitals', data),
+  update: (id: string, data: any) => api.put(`/hospitals/${id}`, data),
+  delete: (id: string) => api.delete(`/hospitals/${id}`),
+  getStats: () => api.get('/hospitals/stats'),
+};
+
 // Dashboard API
 export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),

@@ -38,8 +38,8 @@ const {
  *       500:
  *         description: Server error
  */
-router.get('/rooms', getAllRooms);
-router.get('/rooms/stats', getRoomStats);
+router.get('/', getAllRooms);
+router.get('/stats', getRoomStats);
 
 /**
  * @swagger
@@ -75,7 +75,7 @@ router.get('/rooms/stats', getRoomStats);
  *       500:
  *         description: Server error
  */
-router.get('/rooms/:room_id', getRoom);
+router.get('/:room_id', getRoom);
 
 /**
  * @swagger
@@ -117,7 +117,7 @@ router.get('/rooms/:room_id', getRoom);
  *       500:
  *         description: Server error
  */
-router.post('/rooms', createRoom);
+router.post('/', createRoom);
 
 /**
  * @swagger
@@ -166,8 +166,8 @@ router.post('/rooms', createRoom);
  *       500:
  *         description: Server error
  */
-router.put('/rooms/:room_id', updateRoom);
-router.delete('/rooms/:room_id', deleteRoom);
+router.put('/:room_id', updateRoom);
+router.delete('/:room_id', deleteRoom);
 
 module.exports = router;
 
@@ -191,6 +191,6 @@ module.exports = router;
  *       500:
  *         description: Server error
  */
-router.delete('/rooms/:room_id', deleteRoom);
+router.delete('/:room_id', deleteRoom);
 
 module.exports = router;

@@ -141,15 +141,17 @@ export interface Room {
 
 // Medication Types
 export interface Medication {
-  medication_id: string;
-  name: string;
+  medication_id?: string;
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
+  name?: string;
   description?: string;
-  dosage: string;
-  manufacturer: string;
-  expiry_date: string;
-  stock_quantity: number;
-  price: number;
-  category: string;
+  dosage?: string;
+  manufacturer?: string;
+  expiry_date?: string;
+  stock_quantity?: number;
+  price?: number;
+  category?: string;
   side_effects?: string;
   created_at?: string;
   updated_at?: string;
@@ -157,19 +159,20 @@ export interface Medication {
 
 // Treatment Types
 export interface Treatment {
-  treatment_id: string;
+  treatment_id?: string;
+  _id?: string; // MongoDB ID
   id?: number; // For compatibility
-  patient_id: string;
-  staff_id: string;
+  patient_id?: string;
+  staff_id?: string;
   treatment_type?: string;
   treatment_description?: string;
-  description: string;
+  description?: string;
   diagnosis?: string;
   medication?: string;
   treatment_date?: string;
-  start_date: string;
+  start_date?: string;
   end_date?: string;
-  status: 'ongoing' | 'completed' | 'cancelled';
+  status?: 'ongoing' | 'completed' | 'cancelled';
   cost?: number;
   notes?: string;
   created_at?: string;
@@ -211,20 +214,26 @@ export interface Equipment {
 
 // Visit Types
 export interface Visit {
-  visit_id: string;
-  patient_id: string;
-  staff_id: string;
-  visit_date: string;
-  visit_time: string;
-  reason: string;
+  visit_id?: string;
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
+  patient_id?: string;
+  patientId?: string;
+  staff_id?: string;
+  staffId?: string;
+  visit_date?: string;
+  visit_time?: string;
+  reason?: string;
   diagnosis?: string;
   treatment_plan?: string;
   follow_up_date?: string;
-  status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
-  cost: number;
+  status?: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+  cost?: number;
   notes?: string;
   created_at?: string;
+  createdAt?: string;
   updated_at?: string;
+  updatedAt?: string;
 }
 
 // Prescription Types
@@ -350,6 +359,106 @@ export interface Department {
   email?: string;
   capacity?: number;
   budget?: number;
+  status?: 'active' | 'inactive';
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+}
+
+// Shift Types
+export interface Shift {
+  shift_id?: string;
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
+  staff_id?: string;
+  staffId?: string;
+  date?: string;
+  start_time?: string;
+  startTime?: string;
+  end_time?: string;
+  endTime?: string;
+  break_start?: string;
+  breakStart?: string;
+  break_end?: string;
+  breakEnd?: string;
+  hours_worked?: number;
+  hoursWorked?: number;
+  overtime_hours?: number;
+  overtimeHours?: number;
+  notes?: string;
+  status?: 'scheduled' | 'completed' | 'cancelled' | 'no-show';
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+}
+
+// Surgery Team Types
+export interface SurgeryTeam {
+  surgery_team_id?: string;
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
+  surgery_id?: string;
+  surgeryId?: string;
+  staff_id?: string;
+  staffId?: string;
+  role?: 'primary_surgeon' | 'assistant_surgeon' | 'anesthesiologist' | 'nurse' | 'technician';
+  notes?: string;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+}
+
+// Insurance Types
+export interface Insurance {
+  insurance_id?: string;
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
+  patient_id?: string;
+  patientId?: string;
+  company_name?: string;
+  companyName?: string;
+  policy_number?: string;
+  policyNumber?: string;
+  coverage_type?: string;
+  coverageType?: string;
+  coverage_amount?: number;
+  coverageAmount?: number;
+  deductible?: number;
+  expiry_date?: string;
+  expiryDate?: string;
+  status?: 'active' | 'inactive' | 'expired';
+  notes?: string;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+}
+
+// Hospital Information Types
+export interface HospitalInfo {
+  hospital_id?: string;
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
+  name?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  established_date?: string;
+  establishedDate?: string;
+  bed_capacity?: number;
+  bedCapacity?: number;
+  staff_count?: number;
+  staffCount?: number;
+  departments?: Department[];
+  services?: string[];
+  accreditation?: string[];
+  director_name?: string;
+  directorName?: string;
+  description?: string;
   status?: 'active' | 'inactive';
   created_at?: string;
   createdAt?: string;
