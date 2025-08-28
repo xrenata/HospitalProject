@@ -156,7 +156,7 @@ router.post('/', AppointmentsController.createAppointment);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get('/:id', AppointmentsController.getAppointment);
+router.get('/:appointment_id', AppointmentsController.getAppointment);
 /**
  * @swagger
  * /api/appointments/{id}:
@@ -226,7 +226,7 @@ router.get('/:id', AppointmentsController.getAppointment);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.put('/:id', AppointmentsController.updateAppointment);
+router.put('/:appointment_id', AppointmentsController.updateAppointment);
 /**
  * @swagger
  * /api/appointments/{id}:
@@ -255,6 +255,6 @@ router.put('/:id', AppointmentsController.updateAppointment);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.delete('/:id', AppointmentsController.deleteAppointment);
+router.delete('/:appointment_id', AppointmentsController.deleteAppointment);
 
 module.exports = router;

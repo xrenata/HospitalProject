@@ -1,49 +1,175 @@
-const db = require('../Modules/Database/db');
+const { Appointment } = require('../Modules/Database/models');
+const { executeQuery, getPaginatedResults } = require('../Modules/Database/queryHelper');
 
-const getAllAppointments = (req, res) => {
-    const sql = `SELECT * FROM Appointments`;
-    db.query(sql, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json(result);
-    });
-}
+const getAllAppointments = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search, status, date } = req.query;
+        let filter = {};
+        
+        // Add status filter
+        if (status && status !== 'all') {
+            filter.status = status;
+        }
+        
+        // Add date filter
+        if (date) {
+            const startDate = new Date(date);
+            const endDate = new Date(date);
+            endDate.setDate(endDate.getDate() + 1);
+            
+            filter.appointmentDate = {
+                $gte: startDate,
+                $lt: endDate
+            };
+        }
+        
+        const result = await getPaginatedResults(Appointment, filter, { 
+            page, 
+            limit,
+            sort: { appointmentDate: 1 }
+        });
+        
+        if (result.success) {
+            // Populate patient and staff information
+            await Appointment.populate(result.data, [
+                { path: 'patientId', select: 'firstName lastName email phone' },
+                { path: 'staffId', select: 'name role specialization' },
+                { path: 'departmentId', select: 'name' }
+            ]);
+            
+            res.status(200).json({
+                appointments: result.data,
+                pagination: result.pagination
+            });
+        } else {
+            res.status(500).json({ error: result.error });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
-const getAppointment = (req, res) => {
-    const { appointment_id } = req.params;
-    const sql = `SELECT * FROM Appointments WHERE Appointment_ID ?`;
-    db.query(sql, appointment_id, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json(result);
-    });
-}   
+const getAppointment = async (req, res) => {
+    try {
+        const { appointment_id } = req.params;
+        const appointment = await Appointment.findById(appointment_id)
+            .populate('patientId', 'firstName lastName email phone')
+            .populate('staffId', 'name role specialization')
+            .populate('departmentId', 'name');
+        
+        if (!appointment) {
+            return res.status(404).json({ error: 'Appointment not found' });
+        }
+        
+        res.status(200).json(appointment);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
-const createAppointment = (req, res) => {
-    const { Patient_ID, Doctor_ID, Department_ID, Appointment_Date, Status } = req.body;
-    const sql = `INSERT INTO Appointments (Patient_ID, Doctor_ID, Department_ID, Appointment_Date, Status) VALUES (?, ?, ?, ?, ?)`;
-    db.query(sql, [Patient_ID, Doctor_ID, Department_ID, Appointment_Date, Status], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(201).json({ message: 'Appointment created successfully', appointmentId: result.insertId });
-    });
-}
+const createAppointment = async (req, res) => {
+    try {
+        const { 
+            patient_id, 
+            staff_id, 
+            department_id, 
+            appointment_date, 
+            appointment_time, 
+            reason, 
+            notes 
+        } = req.body;
+        
+        const appointment = new Appointment({
+            patientId: patient_id,
+            staffId: staff_id,
+            departmentId: department_id,
+            appointmentDate: appointment_date,
+            appointmentTime: appointment_time,
+            reason,
+            notes,
+            status: 'scheduled'
+        });
+        
+        const savedAppointment = await appointment.save();
+        
+        // Populate the created appointment
+        await Appointment.populate(savedAppointment, [
+            { path: 'patientId', select: 'firstName lastName email phone' },
+            { path: 'staffId', select: 'name role specialization' },
+            { path: 'departmentId', select: 'name' }
+        ]);
+        
+        res.status(201).json({ 
+            message: 'Appointment created successfully', 
+            appointment: savedAppointment 
+        });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+};
 
-const updateAppointment = (req, res) => {
-    const { appointment_id } = req.params;
-    const { Patient_ID, Doctor_ID, Department_ID, Appointment_Date, Status } = req.body;
-    const sql = `UPDATE Appointments SET Patient_ID = ?, Doctor_ID = ?, Department_ID = ?, Appointment_Date = ?, Status = ? WHERE ID = ?`;
-    db.query(sql, [Patient_ID, Doctor_ID, Department_ID, Appointment_Date, Status, appointment_id], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json({ message: 'Appointment updated successfully' });
-    });
-}
+const updateAppointment = async (req, res) => {
+    try {
+        const { appointment_id } = req.params;
+        const { 
+            patient_id, 
+            staff_id, 
+            department_id, 
+            appointment_date, 
+            appointment_time, 
+            reason, 
+            notes,
+            status
+        } = req.body;
+        
+        // Convert field names to match model schema
+        const updateData = {};
+        if (patient_id) updateData.patientId = patient_id;
+        if (staff_id) updateData.staffId = staff_id;
+        if (department_id) updateData.departmentId = department_id;
+        if (appointment_date) updateData.appointmentDate = appointment_date;
+        if (appointment_time) updateData.appointmentTime = appointment_time;
+        if (reason) updateData.reason = reason;
+        if (notes) updateData.notes = notes;
+        if (status) updateData.status = status;
+        
+        const appointment = await Appointment.findByIdAndUpdate(
+            appointment_id, 
+            updateData, 
+            { new: true, runValidators: true }
+        ).populate([
+            { path: 'patientId', select: 'firstName lastName email phone' },
+            { path: 'staffId', select: 'name role specialization' },
+            { path: 'departmentId', select: 'name' }
+        ]);
+        
+        if (!appointment) {
+            return res.status(404).json({ error: 'Appointment not found' });
+        }
+        
+        res.status(200).json({ 
+            message: 'Appointment updated successfully', 
+            appointment 
+        });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+};
 
-const deleteAppointment = (req, res) => {
-    const { appointment_id } = req.params;
-    const sql = `DELETE FROM Appointments WHERE ID = ?`; // TODO : check if it's Appointment_ID -hasan: bi burda mı aklına geldi knk
-    db.query(sql, appointment_id, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
+const deleteAppointment = async (req, res) => {
+    try {
+        const { appointment_id } = req.params;
+        const appointment = await Appointment.findByIdAndDelete(appointment_id);
+        
+        if (!appointment) {
+            return res.status(404).json({ error: 'Appointment not found' });
+        }
+        
         res.status(200).json({ message: 'Appointment deleted successfully' });
-    });
-}
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 module.exports = {
     getAllAppointments,

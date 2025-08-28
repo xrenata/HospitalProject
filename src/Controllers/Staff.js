@@ -1,49 +1,142 @@
-const db = require('../Modules/Database/db');
+const { Staff } = require('../Modules/Database/models');
 
-const getAllStaff = (req, res) => {
-    const sql = `SELECT * FROM Staff`;
-    db.query(sql, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json(result);
-    });
-}
+const getAllStaff = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search, role, status } = req.query;
+        let filter = {};
+        
+        // Add search functionality
+        if (search) {
+            filter = {
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } },
+                    { specialization: { $regex: search, $options: 'i' } }
+                ]
+            };
+        }
+        
+        // Add role filter
+        if (role && role !== 'all') {
+            filter.role = role;
+        }
+        
+        // Add status filter
+        if (status && status !== 'all') {
+            filter.status = status;
+        }
+        
+        const skip = (page - 1) * limit;
+        const staff = await Staff.find(filter)
+            .populate('department_id', 'name')
+            .skip(skip)
+            .limit(parseInt(limit))
+            .sort({ created_at: -1 });
+            
+        const total = await Staff.countDocuments(filter);
+        
+        res.status(200).json({
+            data: staff,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
-const getStaff = (req, res) => {
-    const { staff_id } = req.params;
-    const sql = `SELECT * FROM Staff WHERE ID = ?`;
-    db.query(sql, staff_id, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json(result);
-    });
-}
+const getStaff = async (req, res) => {
+    try {
+        const { staff_id } = req.params;
+        const staff = await Staff.findById(staff_id).populate('department_id', 'name');
+        
+        if (!staff) {
+            return res.status(404).json({ error: 'Staff member not found' });
+        }
+        
+        res.status(200).json(staff);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
-const createStaff = (req, res) => {
-    const { Hospital_ID, First_Name, Last_Name, Gender, Contact_Info, Department, Leave_Status, Salary, Working_Hours } = req.body;
-    const sql = `INSERT INTO Staff (Hospital_ID, First_Name, Last_Name, Gender, Contact_Info, Department, Leave_Status, Salary, Working_Hours) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    db.query(sql, [Hospital_ID, First_Name, Last_Name, Gender, Contact_Info, Department, Leave_Status, Salary, Working_Hours], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(201).json({ message: 'Staff created successfully', staffId: result.insertId });
-    });
-}
+const createStaff = async (req, res) => {
+    try {
+        const { 
+            name, 
+            role, 
+            department_id, 
+            email, 
+            phone, 
+            specialization, 
+            hire_date, 
+            salary 
+        } = req.body;
+        
+        const staff = new Staff({
+            name,
+            role,
+            department_id,
+            email,
+            phone,
+            specialization,
+            hire_date,
+            salary,
+            status: 'active'
+        });
+        
+        const savedStaff = await staff.save();
+        res.status(201).json({ 
+            message: 'Staff created successfully', 
+            staff: savedStaff 
+        });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+};
 
-const updateStaff = (req, res) => {
-    const { staff_id } = req.params;
-    const { Hospital_ID, First_Name, Last_Name, Gender, Contact_Info, Department, Leave_Status, Salary, Working_Hours } = req.body;
-    const sql = `UPDATE Staff SET Hospital_ID = ?, First_Name = ?, Last_Name = ?, Gender = ?, Contact_Info = ?, Department = ?, Leave_Status = ?, Salary = ?, Working_Hours = ? WHERE ID = ?`;
-    db.query(sql, [Hospital_ID, First_Name, Last_Name, Gender, Contact_Info, Department, Leave_Status, Salary, Working_Hours, staff_id], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json({ message: 'Staff updated successfully' });
-    });
-}
+const updateStaff = async (req, res) => {
+    try {
+        const { staff_id } = req.params;
+        const updateData = req.body;
+        
+        const staff = await Staff.findByIdAndUpdate(
+            staff_id, 
+            updateData, 
+            { new: true, runValidators: true }
+        );
+        
+        if (!staff) {
+            return res.status(404).json({ error: 'Staff member not found' });
+        }
+        
+        res.status(200).json({ 
+            message: 'Staff updated successfully', 
+            staff 
+        });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+};
 
-const deleteStaff = (req, res) => {
-    const { staff_id } = req.params;
-    const sql = `DELETE FROM Staff WHERE ID = ?`;
-    db.query(sql, staff_id, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
+const deleteStaff = async (req, res) => {
+    try {
+        const { staff_id } = req.params;
+        const staff = await Staff.findByIdAndDelete(staff_id);
+        
+        if (!staff) {
+            return res.status(404).json({ error: 'Staff member not found' });
+        }
+        
         res.status(200).json({ message: 'Staff deleted successfully' });
-    });
-}
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 module.exports = {
     getAllStaff,

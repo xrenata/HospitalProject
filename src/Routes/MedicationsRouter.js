@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
     getAllMedications,
-    getMedication,
+    getMedicationById,
     createMedication,
     updateMedication,
     deleteMedication
@@ -73,7 +73,7 @@ router.get('/medications', getAllMedications);
  *       500:
  *         description: Server error
  */
-router.get('/medications/:medication_id', getMedication);
+router.get('/medications/:medication_id', getMedicationById);
 
 /**
  * @swagger

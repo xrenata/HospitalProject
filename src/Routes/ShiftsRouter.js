@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const ShiftsController = require('../Controllers/Shifts');
+const {
+    getAllShifts,
+    getShift,
+    createShift,
+    updateShift,
+    deleteShift
+} = require('../Controllers/Shifts');
 
 /**
  * @swagger
@@ -135,10 +141,10 @@ const ShiftsController = require('../Controllers/Shifts');
  *         description: Shift deleted successfully
  */
 
-router.get('/', ShiftsController.getAllShifts);
-router.get('/:id', ShiftsController.getShift);
-router.post('/', ShiftsController.createShift);
-router.put('/:id', ShiftsController.updateShift);
-router.delete('/:id', ShiftsController.deleteShift);
+router.get('/', getAllShifts);
+router.get('/:id', getShift);
+router.post('/', createShift);
+router.put('/:id', updateShift);
+router.delete('/:id', deleteShift);
 
 module.exports = router;

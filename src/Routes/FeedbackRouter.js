@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const FeedbackController = require('../Controllers/Feedback');
+const {
+    getAllFeedback,
+    getFeedback,
+    createFeedback,
+    updateFeedback,
+    deleteFeedback,
+    respondToFeedback
+} = require('../Controllers/Feedback');
 
 /**
  * @swagger
@@ -155,10 +162,11 @@ const FeedbackController = require('../Controllers/Feedback');
  *         description: Feedback deleted successfully
  */
 
-router.get('/', FeedbackController.getAllFeedback);
-router.get('/:id', FeedbackController.getFeedback);
-router.post('/', FeedbackController.createFeedback);
-router.put('/:id', FeedbackController.updateFeedback);
-router.delete('/:id', FeedbackController.deleteFeedback);
+router.get('/', getAllFeedback);
+router.get('/:id', getFeedback);
+router.post('/', createFeedback);
+router.put('/:id', updateFeedback);
+router.delete('/:id', deleteFeedback);
+router.post('/:id/respond', respondToFeedback);
 
 module.exports = router;

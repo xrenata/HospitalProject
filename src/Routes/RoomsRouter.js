@@ -5,7 +5,8 @@ const {
     getRoom,
     createRoom,
     updateRoom,
-    deleteRoom
+    deleteRoom,
+    getRoomStats
 } = require('../Controllers/Rooms');
 
 /**
@@ -38,6 +39,7 @@ const {
  *         description: Server error
  */
 router.get('/rooms', getAllRooms);
+router.get('/rooms/stats', getRoomStats);
 
 /**
  * @swagger
@@ -165,6 +167,9 @@ router.post('/rooms', createRoom);
  *         description: Server error
  */
 router.put('/rooms/:room_id', updateRoom);
+router.delete('/rooms/:room_id', deleteRoom);
+
+module.exports = router;
 
 /**
  * @swagger

@@ -37,7 +37,7 @@ const {
  *       500:
  *         description: Server error
  */
-router.get('/staff', getAllStaff);
+router.get('/', getAllStaff);
 
 /**
  * @swagger
@@ -73,7 +73,7 @@ router.get('/staff', getAllStaff);
  *       500:
  *         description: Server error
  */
-router.get('/staff/:staff_id', getStaff);
+router.get('/:staff_id', getStaff);
 
 /**
  * @swagger
@@ -115,7 +115,7 @@ router.get('/staff/:staff_id', getStaff);
  *       500:
  *         description: Server error
  */
-router.post('/staff', createStaff);
+router.post('/', createStaff);
 
 /**
  * @swagger
@@ -164,7 +164,7 @@ router.post('/staff', createStaff);
  *       500:
  *         description: Server error
  */
-router.put('/staff/:staff_id', updateStaff);
+router.put('/:staff_id', updateStaff);
 
 /**
  * @swagger
@@ -186,6 +186,6 @@ router.put('/staff/:staff_id', updateStaff);
  *       500:
  *         description: Server error
  */
-router.delete('/staff/:staff_id', deleteStaff);
+router.delete('/:staff_id', deleteStaff);
 
 module.exports = router;

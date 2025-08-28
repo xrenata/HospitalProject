@@ -5,8 +5,63 @@ const {
     getPatient,
     createPatient,
     updatePatient,
-    deletePatient
+    deletePatient,
+    searchPatients
 } = require('../Controllers/Patients');
+
+/**
+ * @swagger
+ * /api/patients/search:
+ *   get:
+ *     summary: Search patients for autocomplete.
+ *     tags:
+ *       - Patients
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         description: Search term (name, TC number, phone, email)
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         description: Maximum number of results
+ *         schema:
+ *           type: number
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Successful search results.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   patient_id:
+ *                     type: string
+ *                   first_name:
+ *                     type: string
+ *                   last_name:
+ *                     type: string
+ *                   tc_number:
+ *                     type: string
+ *                   phone:
+ *                     type: string
+ *                   email:
+ *                     type: string
+ *                   fullName:
+ *                     type: string
+ *                   age:
+ *                     type: number
+ *                   gender:
+ *                     type: string
+ *       500:
+ *         description: Server error
+ */
+router.get('/search', searchPatients);
 
 /**
  * @swagger
@@ -28,9 +83,15 @@ const {
  *                   patient_id:
  *                     type: string
  *                     example: "pat123"
- *                   name:
+ *                   first_name:
  *                     type: string
- *                     example: "John Doe"
+ *                     example: "John"
+ *                   last_name:
+ *                     type: string
+ *                     example: "Doe"
+ *                   tc_number:
+ *                     type: string
+ *                     example: "12345678901"
  *                   age:
  *                     type: number
  *                     example: 30
@@ -40,7 +101,7 @@ const {
  *       500:
  *         description: Server error
  */
-router.get('/patients', getAllPatients);
+router.get('/', getAllPatients);
 
 /**
  * @swagger
@@ -79,7 +140,7 @@ router.get('/patients', getAllPatients);
  *       500:
  *         description: Server error
  */
-router.get('/patients/:patient_id', getPatient);
+router.get('/:patient_id', getPatient);
 
 /**
  * @swagger
@@ -127,7 +188,7 @@ router.get('/patients/:patient_id', getPatient);
  *       500:
  *         description: Server error
  */
-router.post('/patients', createPatient);
+router.post('/', createPatient);
 
 /**
  * @swagger
@@ -182,7 +243,7 @@ router.post('/patients', createPatient);
  *       500:
  *         description: Server error
  */
-router.put('/patients/:patient_id', updatePatient);
+router.put('/:patient_id', updatePatient);
 
 /**
  * @swagger
@@ -204,6 +265,6 @@ router.put('/patients/:patient_id', updatePatient);
  *       500:
  *         description: Server error
  */
-router.delete('/patients/:patient_id', deletePatient);
+router.delete('/:patient_id', deletePatient);
 
 module.exports = router;

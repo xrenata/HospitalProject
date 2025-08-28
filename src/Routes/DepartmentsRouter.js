@@ -5,7 +5,8 @@ const {
     getDepartment,
     createDepartment,
     updateDepartment,
-    deleteDepartment
+    deleteDepartment,
+    getDepartmentStats
 } = require("../Controllers/Departments")
 
 /**
@@ -48,7 +49,10 @@ const {
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get("/departments", getAllDepartments)
+router.get("/", getAllDepartments)
+
+// GET /api/departments/stats - Get department statistics
+router.get("/stats", getDepartmentStats)
 
 /**
  * @swagger
@@ -110,7 +114,7 @@ router.get("/departments", getAllDepartments)
  *                   type: string
  *                   example: "Database query failed"
  */
-router.post("/departments", createDepartment)
+router.post("/", createDepartment)
 
 /**
  * @swagger
@@ -167,7 +171,7 @@ router.post("/departments", createDepartment)
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get("/departments/:department_id", getDepartment)
+router.get("/:id", getDepartment)
 
 /**
  * @swagger
@@ -231,7 +235,7 @@ router.get("/departments/:department_id", getDepartment)
  *                   type: string
  *                   example: "Database query failed"
  */
-router.put("/departments/:department_id", updateDepartment)
+router.put("/:id", updateDepartment)
 
 /**
  * @swagger
@@ -279,6 +283,6 @@ router.put("/departments/:department_id", updateDepartment)
  *                   type: string
  *                   example: "Database query failed"
  */
-router.delete("/departments/:department_id", deleteDepartment)
+router.delete("/:id", deleteDepartment)
 
 module.exports = router

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../Modules/Database/db');
+const { Staff } = require('../Modules/Database/models');
 const { executeQuery } = require('../Modules/Database/queryHelper');
 
 /**
@@ -70,16 +70,31 @@ const { executeQuery } = require('../Modules/Database/queryHelper');
  *                   example: Error message
  */
 router.post('/register', async (req, res) => {
-    const { username, password, permLevel } = req.body;
-    if (!username || !password || permLevel === undefined) {
-        return res.status(400).json({ message: 'Missing required fields' });
-    }
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const sql = `INSERT INTO Users (username, password, permLevel) VALUES (?, ?, ?)`;
-    db.query(sql, [username, hashedPassword, permLevel], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        const { username, password, permLevel } = req.body;
+        if (!username || !password || permLevel === undefined) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+        
+        // Check if user already exists
+        const existingUser = await Staff.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Username already exists' });
+        }
+        
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        const user = new Staff({
+            username,
+            password: hashedPassword,
+            permLevel
+        });
+        
+        await user.save();
         res.status(201).json({ message: 'User registered successfully' });
-    });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 /**
@@ -142,61 +157,53 @@ router.post('/register', async (req, res) => {
  *                   type: string
  *                   example: "Database query failed"
  */
-router.post('/login', (req, res) => {
-    const { username, password } = req.body;
-    console.log('Login attempt with:', req.body);
-    
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Missing required fields' });
-    }
-    
-    const sql = `SELECT * FROM Users WHERE Username = ?`;
-    
-    executeQuery(sql, [username], async (err, result) => {
-        if (err) {
-            console.error('Database error during login:', err);
-            return res.status(500).json({ error: 'Database error during login' });
+router.post('/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        console.log('Login attempt with:', req.body);
+        
+        if (!username || !password) {
+            return res.status(400).json({ message: 'Missing required fields' });
         }
         
-        if (result.length === 0) {
+        const user = await Staff.findOne({ username });
+        
+        if (!user) {
             console.log('Invalid credentials: User not found');
             return res.status(400).json({ message: 'Invalid credentials' });
         }
-
-        const user = result[0];
+        
         console.log('User found:', {
-            id: user.ID,
-            username: user.Username,
-            hasPassword: !!user.Password,
-            permLevel: user.PermLevel
+            id: user._id,
+            username: user.username,
+            hasPassword: !!user.password,
+            permLevel: user.permLevel
         });
         
-        if (!user.Password) {
+        if (!user.password) {
             console.log('Invalid credentials: No password set');
             return res.status(400).json({ message: 'Invalid credentials' });
         }
         
-        try {
-            const validPassword = await bcrypt.compare(password, user.Password);
-            console.log('Password valid:', validPassword);
-            
-            if (!validPassword) {
-                return res.status(400).json({ message: 'Invalid credentials' });
-            }
-
-            const token = jwt.sign({ 
-                id: user.ID, 
-                username: user.Username, 
-                permLevel: user.PermLevel 
-            }, process.env.JWT_SECRET, { expiresIn: '1h' });
-            
-            console.log('Generated token for user:', user.Username);
-            res.json({ token });
-        } catch (error) {
-            console.error('Error during password comparison:', error);
-            res.status(500).json({ error: 'Error during authentication' });
+        const validPassword = await bcrypt.compare(password, user.password);
+        console.log('Password valid:', validPassword);
+        
+        if (!validPassword) {
+            return res.status(400).json({ message: 'Invalid credentials' });
         }
-    });
+
+        const token = jwt.sign({ 
+            id: user._id, 
+            username: user.username, 
+            permLevel: user.permLevel 
+        }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        
+        console.log('Generated token for user:', user.username);
+        res.json({ token });
+    } catch (error) {
+        console.error('Error during authentication:', error);
+        res.status(500).json({ error: 'Error during authentication' });
+    }
 });
 
 module.exports = router;

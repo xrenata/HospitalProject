@@ -1,18 +1,18 @@
-const mysql = require('mysql2');
+const mongoose = require('mongoose');
 
-const db = mysql.createConnection({
-    host: process.env.DATABASE_HOST,
-    user: process.env.MYSQL_USER,
-    password: process.env.DATABASE_PASSWORD,
-    database: process.env.DATABASE_NAME
-});
-
-db.connect(err => {
-    if (err) {
-        console.error(err);
-    } else {
-        console.log('Database connected.');
+// MongoDB connection
+const connectDB = async () => {
+    try {
+        const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/hospital_management', {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+        
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
+    } catch (error) {
+        console.error('Database connection error:', error);
+        process.exit(1);
     }
-});
+};
 
-module.exports = db;
+module.exports = { connectDB, mongoose };

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
     getAllEquipment,
-    getEquipment,
+    getEquipmentById,
     createEquipment,
     updateEquipment,
     deleteEquipment
@@ -119,7 +119,7 @@ router.get('/equipment', getAllEquipment);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get('/equipment/:equipment_id', getEquipment);
+router.get('/equipment/:equipment_id', getEquipmentById);
 
 /**
  * @swagger

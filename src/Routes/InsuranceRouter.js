@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const InsuranceController = require('../Controllers/Insurance');
+const {
+    getAllInsurance,
+    getInsurance,
+    createInsurance,
+    updateInsurance,
+    deleteInsurance
+} = require('../Controllers/Insurance');
 
 /**
  * @swagger
@@ -42,7 +48,7 @@ const InsuranceController = require('../Controllers/Insurance');
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get('/', InsuranceController.getAllInsurance);
+router.get('/', getAllInsurance);
 
 /**
  * @swagger
@@ -98,7 +104,7 @@ router.get('/', InsuranceController.getAllInsurance);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.post('/', InsuranceController.createInsurance);
+router.post('/', createInsurance);
 
 /**
  * @swagger
@@ -145,7 +151,7 @@ router.post('/', InsuranceController.createInsurance);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get('/:id', InsuranceController.getInsurance);
+router.get('/:id', getInsurance);
 
 /**
  * @swagger
@@ -208,7 +214,7 @@ router.get('/:id', InsuranceController.getInsurance);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.put('/:id', InsuranceController.updateInsurance);
+router.put('/:id', updateInsurance);
 
 /**
  * @swagger
@@ -238,6 +244,6 @@ router.put('/:id', InsuranceController.updateInsurance);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.delete('/:id', InsuranceController.deleteInsurance);
+router.delete('/:id', deleteInsurance);
 
 module.exports = router;

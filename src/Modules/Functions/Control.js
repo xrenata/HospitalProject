@@ -1,4 +1,4 @@
-const requiredEnv = ["DATABASE_HOST", "MYSQL_USER", "DATABASE_PASSWORD", "DATABASE_NAME", "PORT"];
+const requiredEnv = ["PORT"];
 const db = require("../Database/db");
 
 const requireCheck = () => {

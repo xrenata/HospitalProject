@@ -1,6 +1,12 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const HospitalsController = require('../Controllers/Hospital');
+const {
+    getAllHospitals,
+    getHospital,
+    createHospital,
+    updateHospital,
+    deleteHospital
+} = require("../Controllers/Hospital");
 
 /**
  * @swagger
@@ -45,7 +51,7 @@ const HospitalsController = require('../Controllers/Hospital');
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get('/', HospitalsController.getAllHospitals);
+router.get("/", getAllHospitals);
 
 /**
  * @swagger
@@ -101,7 +107,7 @@ router.get('/', HospitalsController.getAllHospitals);
  *                   type: string
  *                   example: "Name and address are required"
  */
-router.post('/', HospitalsController.createHospital);
+router.post("/", createHospital);
 
 /**
  * @swagger
@@ -143,7 +149,7 @@ router.post('/', HospitalsController.createHospital);
  *       404:
  *         description: Hospital not found
  */
-router.get('/:id', HospitalsController.getHospital);
+router.get("/:id", getHospital);
 
 /**
  * @swagger
@@ -192,7 +198,7 @@ router.get('/:id', HospitalsController.getHospital);
  *       404:
  *         description: Hospital not found
  */
-router.put('/:id', HospitalsController.updateHospital);
+router.put("/:id", updateHospital);
 
 /**
  * @swagger
@@ -232,6 +238,6 @@ router.put('/:id', HospitalsController.updateHospital);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.delete('/:id', HospitalsController.deleteHospital);
+router.delete("/:id", deleteHospital);
 
 module.exports = router;

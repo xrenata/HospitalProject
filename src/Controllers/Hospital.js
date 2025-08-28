@@ -1,48 +1,178 @@
-const db = require("../Modules/Database/db");
+const { Hospital } = require('../Modules/Database/models');
 
-const getAllHospitals = (req, res) => {
-    const sql = `SELECT * FROM Hospital`;
-    db.query(sql, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json(result);
-    });
+const getAllHospitals = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, status, search } = req.query;
+        
+        let query = {};
+        if (status) query.status = status;
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { type: { $regex: search, $options: 'i' } },
+                { address: { $regex: search, $options: 'i' } }
+            ];
+        }
+        
+        const hospitals = await Hospital.find(query)
+            .sort({ name: 1 })
+            .limit(limit * 1)
+            .skip((page - 1) * limit);
+
+        const total = await Hospital.countDocuments(query);
+
+        res.status(200).json({
+            success: true,
+            data: hospitals,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(total / limit),
+                totalItems: total
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching hospitals:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
+    }
 }
 
-const getHospital = (req, res) => {
-    const { id } = req.params;
-    const sql = `SELECT * FROM Hospital WHERE ID = ?`;
-    db.query(sql, id, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json(result);
-    });
+const getHospital = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const hospital = await Hospital.findById(id);
+        
+        if (!hospital) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Hospital not found' 
+            });
+        }
+        
+        res.status(200).json({
+            success: true,
+            data: hospital
+        });
+    } catch (error) {
+        console.error('Error fetching hospital:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
+    }
 }
 
-const createHospital = (req, res) => {
-    const { Name, Address, Phone, Email } = req.body;
-    const sql = `INSERT INTO Hospital (Name, Address, Phone, Email) VALUES (?, ?, ?, ?)`;
-    db.query(sql, [Name, Address, Phone, Email], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(201).json({ message: 'Hospital created successfully', hospitalId: result.insertId });
-    });
+const createHospital = async (req, res) => {
+    try {
+        const { 
+            name, type, capacity, address, ambulanceCount, equipment,
+            phone, email, website, establishedDate, licenseNumber, status
+        } = req.body;
+        
+        const newHospital = new Hospital({
+            name,
+            type,
+            capacity,
+            address,
+            ambulanceCount: ambulanceCount || 0,
+            ambulance_count: ambulanceCount || 0,
+            equipment,
+            phone,
+            email,
+            website,
+            establishedDate,
+            established_date: establishedDate,
+            licenseNumber,
+            license_number: licenseNumber,
+            status: status || 'active'
+        });
+        
+        const savedHospital = await newHospital.save();
+        
+        res.status(201).json({ 
+            success: true,
+            message: 'Hospital created successfully', 
+            hospitalId: savedHospital._id,
+            data: savedHospital
+        });
+    } catch (error) {
+        console.error('Error creating hospital:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
+    }
 }
 
-const updateHospital = (req, res) => {
-    const { id } = req.params;
-    const { Name, Address, Phone, Email } = req.body;
-    const sql = `UPDATE Hospital SET Name = ?, Address = ?, Phone = ?, Email = ? WHERE ID = ?`;
-    db.query(sql, [Name, Address, Phone, Email, id], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json({ message: 'Hospital updated successfully' });
-    });
+const updateHospital = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = { ...req.body };
+        
+        // Add compatibility fields
+        if (updateData.ambulanceCount) {
+            updateData.ambulance_count = updateData.ambulanceCount;
+        }
+        if (updateData.establishedDate) {
+            updateData.established_date = updateData.establishedDate;
+        }
+        if (updateData.licenseNumber) {
+            updateData.license_number = updateData.licenseNumber;
+        }
+        
+        updateData.updatedAt = new Date();
+        updateData.updated_at = new Date();
+        
+        const updatedHospital = await Hospital.findByIdAndUpdate(id, updateData, { new: true });
+        
+        if (!updatedHospital) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Hospital not found' 
+            });
+        }
+        
+        res.status(200).json({ 
+            success: true,
+            message: 'Hospital updated successfully',
+            data: updatedHospital
+        });
+    } catch (error) {
+        console.error('Error updating hospital:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
+    }
 }
 
-const deleteHospital = (req, res) => {
-    const { id } = req.params;
-    const sql = `DELETE FROM Hospital WHERE ID = ?`;
-    db.query(sql, id, (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(200).json({ message: 'Hospital deleted successfully' });
-    });
+const deleteHospital = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const deletedHospital = await Hospital.findByIdAndDelete(id);
+        
+        if (!deletedHospital) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Hospital not found' 
+            });
+        }
+        
+        res.status(200).json({ 
+            success: true,
+            message: 'Hospital deleted successfully' 
+        });
+    } catch (error) {
+        console.error('Error deleting hospital:', error);
+        res.status(500).json({ 
+            success: false,
+            error: error.message 
+        });
+    }
 }
 
 module.exports = {
@@ -52,4 +182,3 @@ module.exports = {
     updateHospital,
     deleteHospital
 };
-
