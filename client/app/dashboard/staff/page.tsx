@@ -159,6 +159,13 @@ export default function StaffPage() {
     loadDepartments();
   }, [currentPage, searchTerm, roleFilter, statusFilter, departmentFilter]);
 
+  // Reset to first page when filters change (except when only page changes)
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [searchTerm, roleFilter, statusFilter, departmentFilter]);
+
   const loadStaff = async () => {
     if (!canViewStaff) {
       setError(t('staff.no_permission_view'));
@@ -169,66 +176,77 @@ export default function StaffPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await staffAPI.getAll();
+      // Use staffAPI with pagination parameters
+      const params = {
+        page: currentPage,
+        limit: 10,
+        ...(searchTerm && { search: searchTerm }),
+        ...(roleFilter !== 'all' && { role: roleFilter }),
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(departmentFilter !== 'all' && { department_id: departmentFilter }),
+      };
+      
+      const response = await staffAPI.getAll(params);
       console.log('Staff API response:', response.data);
       
-      // Handle different response structures
-      let staffData = Array.isArray(response.data) 
-        ? response.data 
-        : response.data?.data || [];
+      // Handle backend response with pagination
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        setStaff(response.data.data);
+        
+        // Use backend pagination info if available
+        if (response.data.pagination) {
+          setTotalPages(response.data.pagination.totalPages);
+        } else {
+          setTotalPages(Math.ceil(response.data.data.length / 10));
+        }
+      } else {
+        // Fallback to handling as array
+        const staffData = Array.isArray(response.data) ? response.data : [];
+        setStaff(staffData);
+        setTotalPages(Math.ceil(staffData.length / 10));
+      }
       
-      console.log('Staff data sample (first item):', staffData[0]);
-      console.log('All loaded departments:', departments);
-      console.log('Department IDs in staff:', staffData.map((s: Staff) => ({ 
-        name: s.name || 'Unknown', 
-        department_id: s.department_id || 'N/A', 
-        departmentId: (s as any).departmentId || 'N/A',
-        _id: (s as any)._id || 'N/A',
-        populated_dept: (s as any).department_id
-      })));
-      console.log('Department matching test for first staff member:', {
-        staffDeptId: staffData[0]?.department_id,
-        departments: departments.map(d => ({ _id: d._id, department_id: d.department_id, name: d.name }))
-      });
+    } catch (error) {
+      console.error('Failed to load staff:', error);
+      setError(getErrorMessage(error));
+      // Fallback to mock data if API fails
       
-      // Apply search filter
+      // Apply client-side filters to mock data for testing
+      let filteredMockData = [...mockStaff];
+      
       if (searchTerm) {
-        staffData = staffData.filter((staffMember: Staff) => 
+        filteredMockData = filteredMockData.filter((staffMember: Staff) => 
           staffMember.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           staffMember.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (staffMember.specialization?.toLowerCase().includes(searchTerm.toLowerCase()))
         );
       }
       
-      // Apply role filter
       if (roleFilter !== 'all') {
-        staffData = staffData.filter((staffMember: Staff) => 
+        filteredMockData = filteredMockData.filter((staffMember: Staff) => 
           staffMember.role?.toLowerCase() === roleFilter.toLowerCase()
         );
       }
       
-      // Apply status filter
       if (statusFilter !== 'all') {
-        staffData = staffData.filter((staffMember: Staff) => 
+        filteredMockData = filteredMockData.filter((staffMember: Staff) => 
           staffMember.status === statusFilter
         );
       }
       
-      // Apply department filter
       if (departmentFilter !== 'all') {
-        staffData = staffData.filter((staffMember: Staff) => 
+        filteredMockData = filteredMockData.filter((staffMember: Staff) => 
           staffMember.department_id === departmentFilter
         );
       }
       
-      setStaff(staffData);
-      setTotalPages(Math.ceil(staffData.length / 10));
-    } catch (error) {
-      console.error('Failed to load staff:', error);
-      setError(getErrorMessage(error));
-      // Fallback to mock data if API fails
-      setStaff(mockStaff);
-      setTotalPages(Math.ceil(mockStaff.length / 10));
+      // Apply pagination to mock data
+      const startIndex = (currentPage - 1) * 10;
+      const endIndex = startIndex + 10;
+      const paginatedMockData = filteredMockData.slice(startIndex, endIndex);
+      
+      setStaff(paginatedMockData);
+      setTotalPages(Math.ceil(filteredMockData.length / 10));
     } finally {
       setLoading(false);
     }

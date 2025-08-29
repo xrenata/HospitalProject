@@ -225,6 +225,13 @@ export default function MedicalRecordsPage() {
     loadMedications();
   }, [currentPage, searchTerm, statusFilter, patientFilter]);
 
+  // Reset to first page when filters change (except when only page changes)
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [searchTerm, statusFilter, patientFilter]);
+
   // Handle URL action parameter (e.g., from Quick Actions)
   useEffect(() => {
     const action = searchParams.get('action');
@@ -238,9 +245,50 @@ export default function MedicalRecordsPage() {
   const loadTreatments = async () => {
     setLoading(true);
     try {
-      let filteredTreatments = mockTreatments;
+      // Use treatmentsAPI with pagination parameters
+      const params = {
+        page: currentPage,
+        limit: 10,
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(patientFilter !== 'all' && { patientId: patientFilter }),
+      };
       
-      // Apply search filter
+      const response = await treatmentsAPI.getAll(params);
+      console.log('Treatments API response:', response.data);
+      
+      // Handle backend response with pagination
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        let treatmentsData = response.data.data;
+        
+        // Apply search filter client-side for now (could be moved to backend later)
+        if (searchTerm) {
+          treatmentsData = treatmentsData.filter((treatment: any) => 
+            treatment.treatmentType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            treatment.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            treatment.description?.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }
+        
+        setTreatments(treatmentsData);
+        
+        // Use backend pagination info if available
+        if (response.data.pagination) {
+          setTotalPages(response.data.pagination.totalPages);
+        } else {
+          setTotalPages(Math.ceil(treatmentsData.length / 10));
+        }
+      } else {
+        // Fallback to handling as array
+        const treatmentsData = Array.isArray(response.data) ? response.data : [];
+        setTreatments(treatmentsData);
+        setTotalPages(Math.ceil(treatmentsData.length / 10));
+      }
+    } catch (error) {
+      console.error('Failed to load treatments:', error);
+      // Fallback to mock data if API fails
+      let filteredTreatments = [...mockTreatments];
+      
+      // Apply client-side filters to mock data for testing
       if (searchTerm) {
         filteredTreatments = filteredTreatments.filter(treatment => 
           treatment.treatment_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -249,24 +297,25 @@ export default function MedicalRecordsPage() {
         );
       }
       
-      // Apply status filter
       if (statusFilter !== 'all') {
         filteredTreatments = filteredTreatments.filter(treatment => 
           treatment.status === statusFilter
         );
       }
       
-      // Apply patient filter
       if (patientFilter !== 'all') {
         filteredTreatments = filteredTreatments.filter(treatment => 
           treatment.patient_id === patientFilter
         );
       }
       
-      setTreatments(filteredTreatments);
+      // Apply pagination to mock data
+      const startIndex = (currentPage - 1) * 10;
+      const endIndex = startIndex + 10;
+      const paginatedMockData = filteredTreatments.slice(startIndex, endIndex);
+      
+      setTreatments(paginatedMockData);
       setTotalPages(Math.ceil(filteredTreatments.length / 10));
-    } catch (error) {
-      console.error('Failed to load treatments:', error);
     } finally {
       setLoading(false);
     }
@@ -274,25 +323,37 @@ export default function MedicalRecordsPage() {
 
   const loadPatients = async () => {
     try {
-      setPatients(mockPatients);
+      const response = await patientsAPI.getAll({ limit: 1000 }); // Get all patients for dropdown
+      const patientsData = response.data?.data || response.data || [];
+      setPatients(Array.isArray(patientsData) ? patientsData : []);
     } catch (error) {
       console.error('Failed to load patients:', error);
+      // Fallback to mock data
+      setPatients(mockPatients);
     }
   };
 
   const loadStaff = async () => {
     try {
-      setStaff(mockStaff);
+      const response = await staffAPI.getAll({ limit: 1000 }); // Get all staff for dropdown
+      const staffData = response.data?.data || response.data || [];
+      setStaff(Array.isArray(staffData) ? staffData : []);
     } catch (error) {
       console.error('Failed to load staff:', error);
+      // Fallback to mock data
+      setStaff(mockStaff);
     }
   };
 
   const loadMedications = async () => {
     try {
-      setMedications(mockMedications);
+      const response = await medicationsAPI.getAll({ limit: 1000 }); // Get all medications for dropdown
+      const medicationsData = response.data?.data || response.data || [];
+      setMedications(Array.isArray(medicationsData) ? medicationsData : []);
     } catch (error) {
       console.error('Failed to load medications:', error);
+      // Fallback to mock data
+      setMedications(mockMedications);
     }
   };
 
@@ -319,17 +380,17 @@ export default function MedicalRecordsPage() {
     setIsAddMode(false);
     setSelectedTreatment(treatment);
     setFormData({
-      patient_id: treatment.patient_id,
-      staff_id: treatment.staff_id,
-      treatment_type: treatment.treatment_type || '',
-      description: treatment.description,
+      patient_id: (treatment as any).patientId || treatment.patient_id || '',
+      staff_id: (treatment as any).staffId || treatment.staff_id || '',
+      treatment_type: (treatment as any).treatmentType || treatment.treatment_type || '',
+      description: treatment.description || '',
       diagnosis: treatment.diagnosis || '',
       medication: treatment.medication || '',
-      start_date: treatment.start_date,
-      end_date: treatment.end_date || '',
+      start_date: (treatment as any).startDate || treatment.start_date || '',
+      end_date: (treatment as any).endDate || treatment.end_date || '',
       cost: treatment.cost?.toString() || '',
       notes: treatment.notes || '',
-      status: treatment.status
+      status: treatment.status || 'ongoing'
     });
     onOpen();
   };
@@ -338,33 +399,41 @@ export default function MedicalRecordsPage() {
     try {
       const submitData = {
         ...formData,
-        cost: formData.cost ? parseFloat(formData.cost) : undefined
+        cost: formData.cost ? parseFloat(formData.cost) : undefined,
+        // Map frontend field names to backend field names
+        patientId: formData.patient_id,
+        staffId: formData.staff_id,
+        treatmentType: formData.treatment_type,
+        startDate: formData.start_date,
+        endDate: formData.end_date
       };
       
       if (isAddMode) {
-        console.log('Creating treatment:', submitData);
+        await treatmentsAPI.create(submitData);
         alert('Treatment record created successfully!');
       } else {
-        console.log('Updating treatment:', selectedTreatment!.treatment_id, submitData);
+        await treatmentsAPI.update(selectedTreatment!.treatment_id || selectedTreatment!.id?.toString() || '', submitData);
         alert('Treatment record updated successfully!');
       }
       onClose();
       loadTreatments();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save treatment:', error);
-      alert('Failed to save treatment record. Please try again.');
+      const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
+      alert(`Failed to save treatment record: ${errorMessage}`);
     }
   };
 
   const handleDeleteTreatment = async (treatmentId: string) => {
     if (confirm('Are you sure you want to delete this treatment record?')) {
       try {
-        console.log('Deleting treatment:', treatmentId);
+        await treatmentsAPI.delete(treatmentId);
         alert('Treatment record deleted successfully!');
         loadTreatments();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to delete treatment:', error);
-        alert('Failed to delete treatment record. Please try again.');
+        const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
+        alert(`Failed to delete treatment record: ${errorMessage}`);
       }
     }
   };
@@ -388,28 +457,40 @@ export default function MedicalRecordsPage() {
     }
   };
 
-  const getPatientName = (patientId: string) => {
-    const patient = patients.find(p => p.patient_id === patientId);
-    return patient?.name || 'Unknown Patient';
+  const getPatientName = (patientId: string | any) => {
+    // Check if already populated (object with name)
+    if (typeof patientId === 'object' && patientId?.firstName) {
+      return `${patientId.firstName} ${patientId.lastName}`;
+    }
+    
+    // Find in patients array
+    const patient = patients.find(p => p.patient_id === patientId || p._id === patientId);
+    return patient?.name || patient?.firstName ? `${patient.firstName} ${patient.lastName}` : 'Unknown Patient';
   };
 
-  const getStaffName = (staffId: string) => {
-    const staffMember = staff.find(s => s.staff_id === staffId);
+  const getStaffName = (staffId: string | any) => {
+    // Check if already populated (object with name)
+    if (typeof staffId === 'object' && staffId?.name) {
+      return staffId.name;
+    }
+    
+    // Find in staff array
+    const staffMember = staff.find(s => s.staff_id === staffId || s._id === staffId);
     return staffMember?.name || 'Unknown Staff';
   };
 
   const renderCell = (treatment: Treatment, columnKey: string) => {
     switch (columnKey) {
       case 'patient':
-        return getPatientName(treatment.patient_id);
+        return getPatientName((treatment as any).patientId || treatment.patient_id);
       case 'staff':
-        return getStaffName(treatment.staff_id);
+        return getStaffName((treatment as any).staffId || treatment.staff_id);
       case 'treatment_info':
         return (
           <div>
             <p className="font-medium">{treatment.diagnosis}</p>
-            <Chip color={getTreatmentTypeColor(treatment.treatment_type || '')} size="sm">
-              {treatment.treatment_type}
+            <Chip color={getTreatmentTypeColor((treatment as any).treatmentType || treatment.treatment_type || '')} size="sm">
+              {(treatment as any).treatmentType || treatment.treatment_type}
             </Chip>
           </div>
         );
@@ -424,9 +505,9 @@ export default function MedicalRecordsPage() {
       case 'duration':
         return (
           <div>
-            <p>{formatDate(treatment.start_date)}</p>
-            {treatment.end_date && (
-              <p className="text-sm text-gray-500">to {formatDate(treatment.end_date)}</p>
+            <p>{formatDate((treatment as any).startDate || treatment.start_date)}</p>
+            {((treatment as any).endDate || treatment.end_date) && (
+              <p className="text-sm text-gray-500">to {formatDate((treatment as any).endDate || treatment.end_date)}</p>
             )}
           </div>
         );
@@ -434,8 +515,8 @@ export default function MedicalRecordsPage() {
         return treatment.cost ? formatCurrency(treatment.cost) : 'N/A';
       case 'status':
         return (
-          <Chip color={getStatusColor(treatment.status)} size="sm">
-            {treatment.status}
+          <Chip color={getStatusColor(treatment.status || 'ongoing')} size="sm">
+            {treatment.status || 'ongoing'}
           </Chip>
         );
       case 'actions':
@@ -445,7 +526,7 @@ export default function MedicalRecordsPage() {
               <Edit size={16} />
             </Button>
             {getPermissionLevel(user) >= 2 && (
-              <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteTreatment(treatment.treatment_id)}>
+              <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteTreatment(treatment.treatment_id || (treatment as any)._id || treatment.id?.toString() || 'unknown')}>
                 <Trash2 size={16} />
               </Button>
             )}
@@ -549,21 +630,21 @@ export default function MedicalRecordsPage() {
               <SelectItem key="completed">Completed</SelectItem>
               <SelectItem key="cancelled">Cancelled</SelectItem>
             </Select>
-            <Select
-              placeholder="Filter by patient"
-              selectedKeys={patientFilter !== 'all' ? [patientFilter] : []}
-              onSelectionChange={(keys) => {
-                const selectedKey = Array.from(keys)[0] as string;
-                setPatientFilter(selectedKey || 'all');
-              }}
-            >
-              <SelectItem key="all">All Patients</SelectItem>
-              {patients.map((patient) => (
-                <SelectItem key={patient.patient_id}>
-                  {patient.name}
-                </SelectItem>
-              ))}
-            </Select>
+                          <Select
+                placeholder="Filter by patient"
+                selectedKeys={patientFilter !== 'all' ? [patientFilter] : []}
+                onSelectionChange={(keys) => {
+                  const selectedKey = Array.from(keys)[0] as string;
+                  setPatientFilter(selectedKey || 'all');
+                }}
+              >
+                <SelectItem key="all">All Patients</SelectItem>
+                {patients.map((patient) => (
+                  <SelectItem key={patient.patient_id || (patient as any)._id}>
+                    {patient.name || `${(patient as any).firstName} ${(patient as any).lastName}`}
+                  </SelectItem>
+                ))}
+              </Select>
           </div>
         </CardBody>
       </Card>
@@ -621,8 +702,8 @@ export default function MedicalRecordsPage() {
                 isRequired
               >
                 {patients.map((patient) => (
-                  <SelectItem key={patient.patient_id}>
-                    {patient.name}
+                  <SelectItem key={patient.patient_id || (patient as any)._id}>
+                    {patient.name || `${(patient as any).firstName} ${(patient as any).lastName}`}
                   </SelectItem>
                 ))}
               </Select>
@@ -637,9 +718,9 @@ export default function MedicalRecordsPage() {
                 }}
                 isRequired
               >
-                {staff.filter(s => s.role === 'Doctor').map((staffMember) => (
-                  <SelectItem key={staffMember.staff_id}>
-                    {staffMember.name} - {staffMember.specialization}
+                {staff.filter(s => s.role === 'Doctor' || s.role === 'doctor').map((staffMember) => (
+                  <SelectItem key={staffMember.staff_id || (staffMember as any)._id}>
+                    {staffMember.name} - {staffMember.specialization || 'General'}
                   </SelectItem>
                 ))}
               </Select>

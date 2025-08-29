@@ -26,6 +26,11 @@ const getAllStaff = async (req, res) => {
             filter.status = status;
         }
         
+        // Add department filter
+        if (req.query.department_id && req.query.department_id !== 'all') {
+            filter.department_id = req.query.department_id;
+        }
+        
         const skip = (page - 1) * limit;
         const staff = await Staff.find(filter)
             .populate('department_id', 'name')

@@ -115,7 +115,25 @@ export const appointmentsAPI = {
 
 // Staff API
 export const staffAPI = {
-  getAll: () => api.get('/staff'),
+  getAll: (params?: { 
+    page?: number; 
+    limit?: number; 
+    search?: string;
+    role?: string;
+    status?: string;
+    department_id?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.role) queryParams.append('role', params.role);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.department_id) queryParams.append('department_id', params.department_id);
+    
+    const queryString = queryParams.toString();
+    return api.get(`/staff${queryString ? `?${queryString}` : ''}`);
+  },
   getById: (id: string) => api.get(`/staff/${id}`),
   create: (data: any) => api.post('/staff', data),
   update: (id: string, data: any) => api.put(`/staff/${id}`, data),
@@ -493,6 +511,103 @@ export const hospitalAPI = {
   update: (id: string, data: any) => api.put(`/hospitals/${id}`, data),
   delete: (id: string) => api.delete(`/hospitals/${id}`),
   getStats: () => api.get('/hospitals/stats'),
+};
+
+// Notifications API
+export const notificationsAPI = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    filter?: 'all' | 'unread' | 'critical';
+    category?: string;
+    type?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.filter) queryParams.append('filter', params.filter);
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.type) queryParams.append('type', params.type);
+
+    const queryString = queryParams.toString();
+    return api.get(`/notifications${queryString ? `?${queryString}` : ''}`);
+  },
+  markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllAsRead: () => api.patch('/notifications/mark-all-read'),
+  delete: (id: string) => api.delete(`/notifications/${id}`),
+  getStats: () => api.get('/notifications/stats'),
+};
+
+// Analytics API
+export const analyticsAPI = {
+  getOverview: (params?: {
+    period?: '7d' | '30d' | '90d' | '1y';
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.period) queryParams.append('period', params.period);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+
+    const queryString = queryParams.toString();
+    return api.get(`/analytics/overview${queryString ? `?${queryString}` : ''}`);
+  },
+  getPatientAnalytics: (params?: { period?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.period) queryParams.append('period', params.period);
+    
+    const queryString = queryParams.toString();
+    return api.get(`/analytics/patients${queryString ? `?${queryString}` : ''}`);
+  },
+  getAppointmentAnalytics: (params?: { period?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.period) queryParams.append('period', params.period);
+    
+    const queryString = queryParams.toString();
+    return api.get(`/analytics/appointments${queryString ? `?${queryString}` : ''}`);
+  },
+  getStaffAnalytics: () => api.get('/analytics/staff'),
+  getFinancialAnalytics: () => api.get('/analytics/financial'),
+  getResourceAnalytics: () => api.get('/analytics/resources'),
+  generateReport: (data: {
+    reportType: 'comprehensive' | 'patients' | 'appointments' | 'financial';
+    startDate: string;
+    endDate: string;
+    departments?: string[];
+    metrics?: string[];
+  }) => api.post('/analytics/report', data),
+};
+
+// Reports API
+export const reportsAPI = {
+  getTemplates: () => api.get('/reports/templates'),
+  generatePatientReport: (data: {
+    startDate: string;
+    endDate: string;
+    departments?: string[];
+    ageGroups?: string[];
+    includeFields?: string[];
+  }) => api.post('/reports/patient', data),
+  generateAppointmentReport: (data: {
+    startDate: string;
+    endDate: string;
+    departments?: string[];
+  }) => api.post('/reports/appointment', data),
+  generateFinancialReport: (data: {
+    startDate: string;
+    endDate: string;
+  }) => api.post('/reports/financial', data),
+  generateStaffReport: (data: {
+    startDate: string;
+    endDate: string;
+    departments?: string[];
+  }) => api.post('/reports/staff', data),
+  generateInventoryReport: () => api.post('/reports/inventory'),
+  generateComprehensiveReport: (data: {
+    startDate: string;
+    endDate: string;
+  }) => api.post('/reports/comprehensive', data),
 };
 
 // Dashboard API

@@ -37,7 +37,7 @@ const {
  *       500:
  *         description: Server error
  */
-router.get('/treatments', getAllTreatments);
+router.get('/', getAllTreatments);
 
 /**
  * @swagger
@@ -73,7 +73,7 @@ router.get('/treatments', getAllTreatments);
  *       500:
  *         description: Server error
  */
-router.get('/treatments/:treatment_id', getTreatment);
+router.get('/:treatment_id', getTreatment);
 
 /**
  * @swagger
@@ -115,7 +115,7 @@ router.get('/treatments/:treatment_id', getTreatment);
  *       500:
  *         description: Server error
  */
-router.post('/treatments', createTreatment);
+router.post('/', createTreatment);
 
 /**
  * @swagger
@@ -164,7 +164,7 @@ router.post('/treatments', createTreatment);
  *       500:
  *         description: Server error
  */
-router.put('/treatments/:treatment_id', updateTreatment);
+router.put('/:treatment_id', updateTreatment);
 
 /**
  * @swagger
@@ -186,6 +186,6 @@ router.put('/treatments/:treatment_id', updateTreatment);
  *       500:
  *         description: Server error
  */
-router.delete('/treatments/:treatment_id', deleteTreatment);
+router.delete('/:treatment_id', deleteTreatment);
 
 module.exports = router;

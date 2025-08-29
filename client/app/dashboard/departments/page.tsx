@@ -30,8 +30,6 @@ import {
   Spinner,
   Tooltip,
   Badge,
-  Tabs,
-  Tab,
   Avatar
 } from "@heroui/react";
 import { 
@@ -129,7 +127,6 @@ const DepartmentsPage = () => {
   const itemsPerPage = 10;
   
   // Filters
-  const [selectedTab, setSelectedTab] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
   
@@ -156,7 +153,7 @@ const DepartmentsPage = () => {
     loadDepartments();
     loadStaff();
     loadStats();
-  }, [currentPage, selectedTab, searchTerm, selectedStatus]);
+  }, [currentPage, searchTerm, selectedStatus]);
 
   const loadDepartments = async () => {
     try {
@@ -463,10 +460,7 @@ const DepartmentsPage = () => {
     }
   };
 
-  const filteredDepartments = Array.isArray(departments) ? departments.filter(dept => {
-    if (selectedTab === "all") return true;
-    return dept.status === selectedTab;
-  }) : [];
+  const filteredDepartments = Array.isArray(departments) ? departments : [];
 
   return (
     <div className="space-y-6">
@@ -621,85 +615,41 @@ const DepartmentsPage = () => {
         </CardBody>
       </Card>
 
-      {/* Tabs */}
-      <Card>
-        <CardBody>
-          <Tabs
-            selectedKey={selectedTab}
-            onSelectionChange={(key) => setSelectedTab(key as string)}
-            classNames={{
-              tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
-              cursor: "w-full bg-primary-500",
-              tab: "max-w-fit px-0 h-12",
-            }}
-          >
-            <Tab
-              key="all"
-              title={
-                <div className="flex items-center space-x-2">
-                  <span>{t("departments.all") || "All"}</span>
-                  <Chip size="sm" variant="flat">{totalDepartments}</Chip>
-                </div>
-              }
-            />
-            <Tab
-              key="active"
-              title={
-                <div className="flex items-center space-x-2">
-                  <span>{t("departments.active") || "Active"}</span>
-                  <Chip size="sm" color="success" variant="flat">
-                    {Array.isArray(departments) ? departments.filter(d => d.status === 'active').length : 0}
-                  </Chip>
-                </div>
-              }
-            />
-            <Tab
-              key="inactive"
-              title={
-                <div className="flex items-center space-x-2">
-                  <span>{t("departments.inactive") || "Inactive"}</span>
-                  <Chip size="sm" color="danger" variant="flat">
-                    {Array.isArray(departments) ? departments.filter(d => d.status === 'inactive').length : 0}
-                  </Chip>
-                </div>
-              }
-            />
-          </Tabs>
-        </CardBody>
-      </Card>
+
 
       {/* Departments Table */}
       <Card>
         <CardBody className="p-0">
           {loading ? (
             <div className="flex justify-center items-center py-12">
-              <Spinner size="lg" />
-            </div>
-          ) : filteredDepartments.length === 0 ? (
-            <div className="text-center py-12">
-              <Building2 className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                {t("departments.no_departments") || "No departments found"}
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {selectedTab === 'all' 
-                  ? (t("departments.no_departments_message") || "No departments have been created yet.")
-                  : `No ${selectedTab} departments found.`}
-              </p>
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-sm text-gray-500">{t('departments.loading') || 'Loading departments...'}</p>
+              </div>
             </div>
           ) : (
-            <Table aria-label="Departments table" removeWrapper>
+            <Table aria-label="Departments table">
               <TableHeader>
-                <TableColumn key="name">{(t("departments.name") || "NAME").toUpperCase()}</TableColumn>
-                <TableColumn key="head_staff">{(t("departments.head_staff") || "HEAD STAFF").toUpperCase()}</TableColumn>
-                <TableColumn key="staff_count">{(t("departments.staff_count") || "STAFF").toUpperCase()}</TableColumn>
-                <TableColumn key="capacity">{(t("departments.capacity") || "CAPACITY").toUpperCase()}</TableColumn>
-                <TableColumn key="budget">{(t("departments.budget") || "BUDGET").toUpperCase()}</TableColumn>
-                <TableColumn key="contact">{(t("departments.contact") || "CONTACT").toUpperCase()}</TableColumn>
-                <TableColumn key="status">{(t("departments.status") || "STATUS").toUpperCase()}</TableColumn>
-                <TableColumn key="actions">{(t("departments.actions") || "ACTIONS").toUpperCase()}</TableColumn>
+                <TableColumn key="name">{t("departments.name") || "Name"}</TableColumn>
+                <TableColumn key="head_staff">{t("departments.head_staff") || "Head Staff"}</TableColumn>
+                <TableColumn key="staff_count">{t("departments.staff_count") || "Staff"}</TableColumn>
+                <TableColumn key="capacity">{t("departments.capacity") || "Capacity"}</TableColumn>
+                <TableColumn key="budget">{t("departments.budget") || "Budget"}</TableColumn>
+                <TableColumn key="contact">{t("departments.contact") || "Contact"}</TableColumn>
+                <TableColumn key="status">{t("departments.status") || "Status"}</TableColumn>
+                <TableColumn key="actions">{t("departments.actions") || "Actions"}</TableColumn>
               </TableHeader>
-              <TableBody>
+              <TableBody emptyContent={
+                <div className="text-center py-12">
+                  <Building2 className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    {t("departments.no_departments") || "No departments found"}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {t("departments.no_departments_message") || "No departments have been created yet."}
+                  </p>
+                </div>
+              }>
                 {filteredDepartments.map((department) => (
                   <TableRow key={department._id}>
                     {(columnKey) => (
@@ -710,22 +660,18 @@ const DepartmentsPage = () => {
               </TableBody>
             </Table>
           )}
+          
+          {filteredDepartments.length > 0 && (
+            <div className="flex justify-center p-4">
+              <Pagination
+                total={totalPages}
+                page={currentPage}
+                onChange={setCurrentPage}
+              />
+            </div>
+          )}
         </CardBody>
       </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center">
-          <Pagination
-            total={totalPages}
-            page={currentPage}
-            onChange={setCurrentPage}
-            showControls
-            showShadow
-            color="primary"
-          />
-        </div>
-      )}
 
       {/* Add/Edit Department Modal */}
       <Modal 

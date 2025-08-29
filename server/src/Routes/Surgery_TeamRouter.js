@@ -36,7 +36,7 @@ const {
  *       500:
  *         description: Server error
  */
-router.get('/surgery-team', getAllSurgeryTeams);
+router.get('/', getAllSurgeryTeams);
 
 /**
  * @swagger
@@ -71,7 +71,7 @@ router.get('/surgery-team', getAllSurgeryTeams);
  *       500:
  *         description: Server error
  */
-router.get('/surgery-team/:surgery_team_id', getSurgeryTeam);
+router.get('/:surgery_team_id', getSurgeryTeam);
 
 /**
  * @swagger
@@ -111,7 +111,7 @@ router.get('/surgery-team/:surgery_team_id', getSurgeryTeam);
  *       500:
  *         description: Server error
  */
-router.post('/surgery-team', createSurgeryTeam);
+router.post('/', createSurgeryTeam);
 
 /**
  * @swagger
@@ -158,7 +158,7 @@ router.post('/surgery-team', createSurgeryTeam);
  *       500:
  *         description: Server error
  */
-router.put('/surgery-team/:surgery_team_id', updateSurgeryTeam);
+router.put('/:surgery_team_id', updateSurgeryTeam);
 
 /**
  * @swagger
@@ -180,6 +180,6 @@ router.put('/surgery-team/:surgery_team_id', updateSurgeryTeam);
  *       500:
  *         description: Server error
  */
-router.delete('/surgery-team/:surgery_team_id', deleteSurgeryTeam);
+router.delete('/:surgery_team_id', deleteSurgeryTeam);
 
 module.exports = router;

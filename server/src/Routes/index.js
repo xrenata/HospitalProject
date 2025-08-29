@@ -35,6 +35,10 @@ router.use("/notifications", authorizePermLevel(1), require("./NotificationsRout
 router.use("/complaints", authorizePermLevel(1), require("./ComplaintsRouter"));
 router.use("/feedback", authorizePermLevel(1), require("./FeedbackRouter"));
 
+// Analytics & Reports
+router.use("/analytics", authorizePermLevel(1), require("./AnalyticsRouter"));
+router.use("/reports", authorizePermLevel(1), require("./ReportsRouter"));
+
 // Administration
 router.use("/insurance", authorizePermLevel(2), require("./InsuranceRouter"));
 router.use("/hospitals", authorizePermLevel(3), require("./HospitalsRouter"));

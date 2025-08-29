@@ -55,7 +55,7 @@ const {
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get('/equipment', getAllEquipment);
+router.get('/', getAllEquipment);
 
 /**
  * @swagger
@@ -119,7 +119,7 @@ router.get('/equipment', getAllEquipment);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get('/equipment/:equipment_id', getEquipmentById);
+router.get('/:equipment_id', getEquipmentById);
 
 /**
  * @swagger
@@ -189,7 +189,7 @@ router.get('/equipment/:equipment_id', getEquipmentById);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.post('/equipment', createEquipment);
+router.post('/', createEquipment);
 
 /**
  * @swagger
@@ -260,7 +260,7 @@ router.post('/equipment', createEquipment);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.put('/equipment/:equipment_id', updateEquipment);
+router.put('/:equipment_id', updateEquipment);
 
 /**
  * @swagger
@@ -308,6 +308,6 @@ router.put('/equipment/:equipment_id', updateEquipment);
  *                   type: string
  *                   example: "Database query failed"
  */
-router.delete('/equipment/:equipment_id', deleteEquipment);
+router.delete('/:equipment_id', deleteEquipment);
 
 module.exports = router;
