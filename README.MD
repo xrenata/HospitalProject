@@ -281,8 +281,7 @@ This project is licensed under the MIT License.
 
 If you encounter any issues or have suggestions, feel free to reach out to the developers:
 
-- ![Emirhan](https://lantern.rest/api/v1/users/937316083533230110?svg=1)
-- ![HasanBocek](https://lantern.rest/api/v1/users/903614114662858814?svg=1)
+![Emirhan](https://lantern.rest/api/v1/users/937316083533230110?svg=1)
 
 ## 🙏 Acknowledgments
 
