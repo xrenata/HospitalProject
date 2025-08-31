@@ -67,7 +67,7 @@ export default function DashboardPage() {
         setLoading(true);
         const [statsResponse, activityResponse] = await Promise.all([
           dashboardAPI.getStats(),
-          dashboardAPI.getRecentActivity(4)
+          dashboardAPI.getRecentActivity()
         ]);
         
         setStats(statsResponse.data);
@@ -302,7 +302,7 @@ export default function DashboardPage() {
         <Card 
           className="w-full cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
           isPressable
-          onPress={() => alert('Revenue details coming soon!')}
+          onPress={() => router.push('/dashboard/analytics?tab=financial')}
         >
           <CardBody className="p-4 sm:p-6">
             <div className="flex items-center gap-3 sm:gap-4">

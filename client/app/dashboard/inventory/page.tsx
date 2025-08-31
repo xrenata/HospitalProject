@@ -9,11 +9,13 @@ import {
 } from '@heroui/react';
 import { Wrench, Pill, DollarSign, Search, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { Equipment, Medication } from '@/types';
 import { formatDate, getPermissionLevel, formatCurrency } from '@/lib/utils';
 
 export default function InventoryPage() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -286,16 +288,16 @@ export default function InventoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Equipment & Inventory
+            {t('inventory.title')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage hospital equipment and medication inventory
+            {t('inventory.subtitle')}
           </p>
         </div>
         {getPermissionLevel(user) >= 2 && (
           <Button color="primary" onPress={handleAdd}>
             <span className="mr-2">{activeTab === 'equipment' ? <Wrench size={20} /> : <Pill size={20} />}</span>
-            Add {activeTab === 'equipment' ? 'Equipment' : 'Medication'}
+            {activeTab === 'equipment' ? t('inventory.add_equipment') : t('inventory.add_medication')}
           </Button>
         )}
       </div>
@@ -305,21 +307,21 @@ export default function InventoryPage() {
         <Card>
           <CardBody className="p-6 text-center">
             <div className="text-2xl mb-2"><Wrench size={32} /></div>
-            <h3 className="text-lg font-semibold">Equipment</h3>
+            <h3 className="text-lg font-semibold">{t('inventory.equipment')}</h3>
             <p className="text-2xl font-bold text-blue-600">{equipment.length}</p>
           </CardBody>
         </Card>
         <Card>
           <CardBody className="p-6 text-center">
             <div className="text-2xl mb-2"><Pill size={32} /></div>
-            <h3 className="text-lg font-semibold">Medications</h3>
+            <h3 className="text-lg font-semibold">{t('inventory.medications')}</h3>
             <p className="text-2xl font-bold text-green-600">{medications.length}</p>
           </CardBody>
         </Card>
         <Card>
           <CardBody className="p-6 text-center">
             <div className="text-2xl mb-2">⚠️</div>
-            <h3 className="text-lg font-semibold">Low Stock</h3>
+            <h3 className="text-lg font-semibold">{t('inventory.low_stock')}</h3>
             <p className="text-2xl font-bold text-yellow-600">
               {medications.filter(m => m.stock_quantity <= 100).length}
             </p>
@@ -328,7 +330,7 @@ export default function InventoryPage() {
         <Card>
           <CardBody className="p-6 text-center">
             <div className="text-2xl mb-2"><DollarSign size={32} /></div>
-            <h3 className="text-lg font-semibold">Total Value</h3>
+            <h3 className="text-lg font-semibold">{t('inventory.total_value')}</h3>
             <p className="text-2xl font-bold text-purple-600">
               {formatCurrency(equipment.reduce((sum, item) => sum + item.cost, 0))}
             </p>
@@ -341,7 +343,7 @@ export default function InventoryPage() {
         <CardBody className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <Input
-              placeholder={`Search ${activeTab}...`}
+              placeholder={t('inventory.search_placeholder', { type: activeTab })}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1"
@@ -349,7 +351,7 @@ export default function InventoryPage() {
             />
             {activeTab === 'equipment' && (
               <Select
-                placeholder="Filter by status"
+                placeholder={t('inventory.filter_by_status')}
                 className="sm:w-48"
                 selectedKeys={statusFilter !== 'all' ? [statusFilter] : []}
                 onSelectionChange={(keys) => {
@@ -357,10 +359,10 @@ export default function InventoryPage() {
                   setStatusFilter(selectedKey || 'all');
                 }}
               >
-                <SelectItem key="all">All Status</SelectItem>
-                <SelectItem key="operational">Operational</SelectItem>
-                <SelectItem key="maintenance">Maintenance</SelectItem>
-                <SelectItem key="out-of-order">Out of Order</SelectItem>
+                <SelectItem key="all">{t('inventory.all_status')}</SelectItem>
+                <SelectItem key="operational">{t('inventory.operational')}</SelectItem>
+                <SelectItem key="maintenance">{t('inventory.maintenance')}</SelectItem>
+                <SelectItem key="out-of-order">{t('inventory.out_of_order')}</SelectItem>
               </Select>
             )}
           </div>

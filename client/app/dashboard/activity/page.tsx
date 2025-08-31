@@ -46,19 +46,19 @@ const ActivityPage = () => {
 
   // Activity types
   const activityTypes = [
-    { key: 'appointment', label: 'Appointments', icon: Calendar, color: 'primary' },
-    { key: 'admission', label: 'Admissions', icon: UserPlus, color: 'success' },
-    { key: 'discharge', label: 'Discharges', icon: TrendingUp, color: 'secondary' },
-    { key: 'emergency', label: 'Emergencies', icon: AlertTriangle, color: 'danger' },
-    { key: 'test', label: 'Tests', icon: FileText, color: 'warning' },
-    { key: 'treatment', label: 'Treatments', icon: Stethoscope, color: 'primary' }
+    { key: 'appointment', label: t('activity.activity_types.appointment'), icon: Calendar, color: 'primary' },
+    { key: 'admission', label: t('activity.activity_types.admission'), icon: UserPlus, color: 'success' },
+    { key: 'discharge', label: t('activity.activity_types.discharge'), icon: TrendingUp, color: 'secondary' },
+    { key: 'emergency', label: t('activity.activity_types.emergency'), icon: AlertTriangle, color: 'danger' },
+    { key: 'test', label: t('activity.activity_types.test'), icon: FileText, color: 'warning' },
+    { key: 'treatment', label: t('activity.activity_types.treatment'), icon: Stethoscope, color: 'primary' }
   ];
 
   const statusTypes = [
-    { key: 'completed', label: 'Completed', color: 'success' },
-    { key: 'pending', label: 'Pending', color: 'warning' },
-    { key: 'urgent', label: 'Urgent', color: 'danger' },
-    { key: 'cancelled', label: 'Cancelled', color: 'default' }
+    { key: 'completed', label: t('activity.status_types.completed'), color: 'success' },
+    { key: 'pending', label: t('activity.status_types.pending'), color: 'warning' },
+    { key: 'urgent', label: t('activity.status_types.urgent'), color: 'danger' },
+    { key: 'cancelled', label: t('activity.status_types.cancelled'), color: 'default' }
   ];
 
   useEffect(() => {
@@ -216,10 +216,10 @@ const ActivityPage = () => {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Activity Timeline
+              {t('activity.title')}
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Hospital activity and events timeline
+              {t('activity.subtitle')}
             </p>
           </div>
         </div>
@@ -267,7 +267,7 @@ const ActivityPage = () => {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <Input
-                placeholder="Search activities..."
+                placeholder={t('activity.search_placeholder')}
                 value={searchTerm}
                 onValueChange={setSearchTerm}
                 startContent={<Search size={16} />}
@@ -276,7 +276,7 @@ const ActivityPage = () => {
               />
               
               <Select
-                placeholder="Activity Type"
+                placeholder={t('activity.activity_type_placeholder')}
                 selectedKeys={typeFilter ? [typeFilter] : []}
                 onSelectionChange={(keys) => {
                   const key = Array.from(keys)[0] as string;
@@ -284,14 +284,14 @@ const ActivityPage = () => {
                 }}
                 className="sm:max-w-xs"
               >
-                <SelectItem key="all">All Types</SelectItem>
+                <SelectItem key="all">{t('activity.all_types')}</SelectItem>
                 {activityTypes.map((type) => (
                   <SelectItem key={type.key}>{type.label}</SelectItem>
                 ))}
               </Select>
               
               <Select
-                placeholder="Status"
+                placeholder={t('activity.status_placeholder')}
                 selectedKeys={statusFilter ? [statusFilter] : []}
                 onSelectionChange={(keys) => {
                   const key = Array.from(keys)[0] as string;
@@ -299,7 +299,7 @@ const ActivityPage = () => {
                 }}
                 className="sm:max-w-xs"
               >
-                <SelectItem key="all">All Status</SelectItem>
+                <SelectItem key="all">{t('activity.all_status')}</SelectItem>
                 {statusTypes.map((status) => (
                   <SelectItem key={status.key}>{status.label}</SelectItem>
                 ))}
@@ -310,13 +310,13 @@ const ActivityPage = () => {
                 onPress={handleClearFilters}
                 className="sm:w-auto"
               >
-                Clear Filters
+                {t('activity.clear_filters')}
               </Button>
             </div>
             
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Showing {activities.length} of {totalItems} activities
+                {t('activity.showing_activities', { count: activities.length.toString(), total: totalItems.toString() })}
               </p>
             </div>
           </div>
@@ -334,12 +334,12 @@ const ActivityPage = () => {
             <div className="text-center py-12">
               <Activity className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                No Activities Found
+                {t('activity.no_activities_found')}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {searchTerm || typeFilter !== 'all' || statusFilter !== 'all'
-                  ? 'Try adjusting your filters to see more activities.'
-                  : 'There are no recent activities to display.'}
+                  ? t('activity.no_activities_message')
+                  : t('activity.try_different_filters')}
               </p>
               {(searchTerm || typeFilter !== 'all' || statusFilter !== 'all') && (
                 <Button
@@ -347,7 +347,7 @@ const ActivityPage = () => {
                   onPress={handleClearFilters}
                   className="mt-4"
                 >
-                  Clear Filters
+                  {t('activity.clear_filters')}
                 </Button>
               )}
             </div>
@@ -379,7 +379,7 @@ const ActivityPage = () => {
                               color={getStatusColor(activity.status) as any}
                               variant="flat"
                             >
-                              {activity.status}
+                              {t(`activity.status_types.${activity.status}`)}
                             </Chip>
                           </div>
                           <p className="text-gray-600 dark:text-gray-400 mb-2">

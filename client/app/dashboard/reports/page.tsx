@@ -14,6 +14,7 @@ import {
   FileSpreadsheet, Mail, Printer
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { reportsAPI, departmentsAPI } from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
@@ -43,6 +44,7 @@ interface GeneratedReport {
 
 export default function ReportsPage() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<ReportTemplate[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -94,7 +96,7 @@ export default function ReportsPage() {
 
   const handleGenerateReport = async () => {
     if (!selectedTemplate || !startDate || !endDate) {
-      alert('Lütfen tüm gerekli alanları doldurun');
+      alert(t('reports.fill_required_fields'));
       return;
     }
 
@@ -128,7 +130,7 @@ export default function ReportsPage() {
           response = await reportsAPI.generateComprehensiveReport(reportData);
           break;
         default:
-          throw new Error('Geçersiz rapor türü');
+          throw new Error(t('reports.invalid_report_type'));
       }
 
       // Create report entry
@@ -150,10 +152,10 @@ export default function ReportsPage() {
       setPreviewData(response.data?.data);
       
       onGenerateClose();
-      alert('Rapor başarıyla oluşturuldu!');
+      alert(t('reports.report_generated_success'));
     } catch (error) {
       console.error('Failed to generate report:', error);
-      alert('Rapor oluşturulurken hata oluştu');
+      alert(t('reports.report_generation_error'));
     } finally {
       setGenerating(false);
     }
@@ -167,7 +169,7 @@ export default function ReportsPage() {
         generatedAt: report.generatedAt,
         name: report.name
       },
-      summary: 'Bu bir önizleme verisidir...'
+      summary: t('reports.preview_sample_data')
     });
     onPreviewOpen();
   };
@@ -245,10 +247,10 @@ export default function ReportsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Raporlar
+            {t('reports.title')}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Özelleştirilebilir raporlar oluşturun ve yönetin
+            {t('reports.subtitle')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -257,7 +259,7 @@ export default function ReportsPage() {
             onPress={loadData}
             startContent={<RefreshCw size={16} />}
           >
-            Yenile
+            {t('reports.refresh')}
           </Button>
           <Button
             color="primary"
@@ -273,13 +275,13 @@ export default function ReportsPage() {
             }}
             startContent={<FileText size={16} />}
           >
-            Yeni Rapor
+            {t('reports.new_report')}
           </Button>
         </div>
       </div>
 
       <Tabs defaultSelectedKey="templates">
-        <Tab key="templates" title="Rapor Şablonları">
+        <Tab key="templates" title={t('reports.report_templates')}>
           {/* Report Templates Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {templates.map((template) => (
@@ -318,11 +320,11 @@ export default function ReportsPage() {
                   </p>
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-gray-500">
-                      {template.fields.length} alan
+                      {t('reports.fields_count', { count: template.fields.length.toString() })}
                     </span>
                     <div className="flex items-center gap-2 text-primary">
                       <Play size={14} />
-                      <span className="text-sm font-medium">Oluştur</span>
+                      <span className="text-sm font-medium">{t('reports.create')}</span>
                     </div>
                   </div>
                 </CardBody>
@@ -331,7 +333,7 @@ export default function ReportsPage() {
           </div>
         </Tab>
 
-        <Tab key="generated" title={`Oluşturulan Raporlar (${generatedReports.length})`}>
+        <Tab key="generated" title={t('reports.generated_reports', { count: generatedReports.length.toString() })}>
           {/* Generated Reports */}
           <Card>
             <CardBody className="p-0">
@@ -339,10 +341,10 @@ export default function ReportsPage() {
                 <div className="text-center py-12">
                   <FileText className="mx-auto text-gray-400 mb-4" size={48} />
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    Henüz rapor oluşturulmamış
+                    {t('reports.no_reports_yet')}
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Bir rapor şablonu seçerek başlayın
+                    {t('reports.start_with_template')}
                   </p>
                 </div>
               ) : (
@@ -364,7 +366,7 @@ export default function ReportsPage() {
                                   color={getStatusColor(report.status) as any}
                                   variant="flat"
                                 >
-                                  {report.status}
+                                  {t(`reports.${report.status}`)}
                                 </Chip>
                               </div>
                             </div>
@@ -378,7 +380,7 @@ export default function ReportsPage() {
                             onPress={() => handlePreviewReport(report)}
                             startContent={<Eye size={14} />}
                           >
-                            Önizle
+                            {t('reports.preview')}
                           </Button>
                           
                           <div className="flex items-center gap-1">
@@ -427,14 +429,14 @@ export default function ReportsPage() {
       >
         <ModalContent>
           <ModalHeader>
-            {selectedTemplate ? selectedTemplate.name : 'Yeni Rapor Oluştur'}
+            {selectedTemplate ? selectedTemplate.name : t('reports.new_report_create')}
           </ModalHeader>
           <ModalBody>
             <div className="space-y-6">
               {!selectedTemplate && (
                 <Select
-                  label="Rapor Şablonu"
-                  placeholder="Bir şablon seçin"
+                  label={t('reports.report_template')}
+                  placeholder={t('reports.select_template')}
                   onSelectionChange={(keys) => {
                     const templateId = Array.from(keys)[0] as string;
                     const template = templates.find(t => t.id === templateId);
@@ -469,14 +471,14 @@ export default function ReportsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <Input
                   type="date"
-                  label="Başlangıç Tarihi"
+                  label={t('reports.start_date')}
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   isRequired
                 />
                 <Input
                   type="date"
-                  label="Bitiş Tarihi"
+                  label={t('reports.end_date')}
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   isRequired
@@ -484,24 +486,24 @@ export default function ReportsPage() {
               </div>
 
               <Input
-                label="Rapor Adı"
+                label={t('reports.report_name')}
                 value={reportName}
                 onChange={(e) => setReportName(e.target.value)}
-                placeholder="Özel rapor adı (opsiyonel)"
+                placeholder={t('reports.custom_report_name')}
               />
 
               <Textarea
-                label="Açıklama"
+                label={t('reports.description')}
                 value={reportDescription}
                 onChange={(e) => setReportDescription(e.target.value)}
-                placeholder="Rapor açıklaması (opsiyonel)"
+                placeholder={t('reports.report_description')}
                 rows={2}
               />
 
               {departments.length > 0 && (
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Departmanlar (Opsiyonel)
+                    {t('reports.departments_optional')}
                   </label>
                   <CheckboxGroup
                     value={selectedDepartments}
@@ -524,7 +526,7 @@ export default function ReportsPage() {
                   isSelected={autoSchedule}
                   onValueChange={setAutoSchedule}
                 >
-                  Otomatik zamanlama
+                  {t('reports.auto_schedule')}
                 </Checkbox>
                 {autoSchedule && (
                   <Select
@@ -536,9 +538,9 @@ export default function ReportsPage() {
                       setScheduleFrequency(freq);
                     }}
                   >
-                    <SelectItem key="daily">Günlük</SelectItem>
-                    <SelectItem key="weekly">Haftalık</SelectItem>
-                    <SelectItem key="monthly">Aylık</SelectItem>
+                    <SelectItem key="daily">{t('reports.daily')}</SelectItem>
+                    <SelectItem key="weekly">{t('reports.weekly')}</SelectItem>
+                    <SelectItem key="monthly">{t('reports.monthly')}</SelectItem>
                   </Select>
                 )}
               </div>
@@ -546,7 +548,7 @@ export default function ReportsPage() {
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={onGenerateClose}>
-              İptal
+              {t('reports.cancel')}
             </Button>
             <Button 
               color="primary" 
@@ -554,7 +556,7 @@ export default function ReportsPage() {
               isLoading={generating}
               isDisabled={!selectedTemplate || !startDate || !endDate}
             >
-              Rapor Oluştur
+              {t('reports.generate_report')}
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -568,24 +570,24 @@ export default function ReportsPage() {
         scrollBehavior="inside"
       >
         <ModalContent>
-          <ModalHeader>Rapor Önizleme</ModalHeader>
+          <ModalHeader>{t('reports.report_preview')}</ModalHeader>
           <ModalBody>
             {previewData ? (
               <div className="space-y-4">
                 <Card>
                   <CardBody>
-                    <h4 className="font-medium mb-2">Rapor Bilgileri</h4>
+                    <h4 className="font-medium mb-2">{t('reports.report_information')}</h4>
                     <div className="text-sm space-y-1 text-gray-600 dark:text-gray-400">
-                      <p><strong>Tür:</strong> {previewData.metadata?.reportType}</p>
-                      <p><strong>Oluşturulma:</strong> {formatDate(previewData.metadata?.generatedAt)}</p>
-                      <p><strong>Ad:</strong> {previewData.metadata?.name}</p>
+                      <p><strong>{t('reports.report_type')}:</strong> {previewData.metadata?.reportType}</p>
+                      <p><strong>{t('reports.generated_at')}:</strong> {formatDate(previewData.metadata?.generatedAt)}</p>
+                      <p><strong>{t('reports.report_name_label')}:</strong> {previewData.metadata?.name}</p>
                     </div>
                   </CardBody>
                 </Card>
                 
                 <Card>
                   <CardBody>
-                    <h4 className="font-medium mb-2">Rapor İçeriği</h4>
+                    <h4 className="font-medium mb-2">{t('reports.report_content')}</h4>
                     <pre className="text-sm bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-auto max-h-96">
                       {JSON.stringify(previewData, null, 2)}
                     </pre>
@@ -595,13 +597,13 @@ export default function ReportsPage() {
             ) : (
               <div className="text-center py-8">
                 <Spinner size="lg" />
-                <p className="mt-2">Rapor yükleniyor...</p>
+                <p className="mt-2">{t('reports.loading_report')}</p>
               </div>
             )}
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={onPreviewClose}>
-              Kapat
+              {t('reports.close')}
             </Button>
             <Button 
               color="primary" 
@@ -618,7 +620,7 @@ export default function ReportsPage() {
                 }
               }}
             >
-              İndir
+              {t('reports.download')}
             </Button>
           </ModalFooter>
         </ModalContent>

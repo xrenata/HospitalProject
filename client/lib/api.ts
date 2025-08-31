@@ -568,7 +568,15 @@ export const analyticsAPI = {
     return api.get(`/analytics/appointments${queryString ? `?${queryString}` : ''}`);
   },
   getStaffAnalytics: () => api.get('/analytics/staff'),
-  getFinancialAnalytics: () => api.get('/analytics/financial'),
+  getFinancialAnalytics: (params?: { period?: string; startDate?: string; endDate?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.period) queryParams.append('period', params.period);
+    if (params?.startDate) queryParams.append('startDate', params.startDate);
+    if (params?.endDate) queryParams.append('endDate', params.endDate);
+    
+    const queryString = queryParams.toString();
+    return api.get(`/analytics/financial${queryString ? `?${queryString}` : ''}`);
+  },
   getResourceAnalytics: () => api.get('/analytics/resources'),
   generateReport: (data: {
     reportType: 'comprehensive' | 'patients' | 'appointments' | 'financial';

@@ -12,11 +12,17 @@ import {
   Globe, Monitor, Smartphone, Wifi, WifiOff, Sun, Moon, Clock, Users, Clipboard
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useTheme } from 'next-themes';
 
 export default function LoginPage() {
+  const { login } = useAuth();
+  const { t } = useI18n();
+  const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isVisible, setIsVisible] = useState(false);
@@ -24,9 +30,6 @@ export default function LoginPage() {
 
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
-  const { login } = useAuth();
-  const router = useRouter();
-  const { theme, setTheme } = useTheme();
 
   // Modal states
   const { isOpen: isFeaturesOpen, onOpen: onFeaturesOpen, onClose: onFeaturesClose } = useDisclosure();
@@ -267,14 +270,14 @@ export default function LoginPage() {
         {/* Footer */}
         <div className="text-center mt-4 space-y-1">
           <p className="text-xs text-foreground/60">
-            © 2025 Hospital Management System
+            {t('login.copyright')}
           </p>
           <div className="flex items-center justify-center space-x-3 text-xs text-foreground/50">
-            <button className="hover:text-primary transition-colors">Gizlilik</button>
+            <button className="hover:text-primary transition-colors">{t('login.privacy')}</button>
             <span>•</span>
             <button className="hover:text-primary transition-colors">Kullanım Şartları</button>
             <span>•</span>
-            <button className="hover:text-primary transition-colors">Destek</button>
+            <button className="hover:text-primary transition-colors">{t('login.support')}</button>
           </div>
         </div>
       </div>
@@ -298,7 +301,7 @@ export default function LoginPage() {
           <ModalHeader>
             <div className="flex items-center space-x-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              <span className="text-foreground">Sistem Özellikleri</span>
+              <span className="text-foreground">{t('login.system_features')}</span>
             </div>
           </ModalHeader>
           <ModalBody>
@@ -369,7 +372,7 @@ export default function LoginPage() {
           </ModalBody>
           <ModalFooter>
             <Button color="primary" onPress={onFeaturesClose}>
-              Anladım
+              {t('login.understood')}
             </Button>
           </ModalFooter>
         </ModalContent>

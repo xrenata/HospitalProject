@@ -33,7 +33,21 @@ export const formatTime = (date: string | Date): string => {
 };
 
 // Permission utilities
-export const getPermissionLabel = (level: number): string => {
+export const getPermissionLabel = (level: number, t?: (key: string) => string): string => {
+  if (t) {
+    switch (level) {
+      case PermissionLevel.NURSE:
+        return t('utils.permission_levels.nurse');
+      case PermissionLevel.DOCTOR:
+        return t('utils.permission_levels.doctor');
+      case PermissionLevel.ADMIN:
+        return t('utils.permission_levels.admin');
+      default:
+        return t('utils.permission_levels.unknown');
+    }
+  }
+  
+  // Fallback to English if no translation function provided
   switch (level) {
     case PermissionLevel.NURSE:
       return 'Nurse';
