@@ -63,8 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Login successful!');
       return true;
     } catch (error: any) {
-      console.error('Login error:', error);
-      console.error(error.response?.data?.message || 'Login failed');
+      // Silent error handling - no console logs
       return false;
     } finally {
       setLoading(false);

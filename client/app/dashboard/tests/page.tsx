@@ -52,7 +52,9 @@ import {
   PlayCircle,
   MoreVertical,
   Download,
-  RefreshCw
+  RefreshCw,
+  Stethoscope,
+  Building
 } from "lucide-react";
 import { testsAPI, patientsAPI, staffAPI, departmentsAPI } from "@/lib/api";
 import { useI18n } from "@/contexts/I18nContext";
@@ -124,6 +126,8 @@ interface Department {
 const TestsPage = () => {
   const { t } = useI18n();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   
   // State
   const [tests, setTests] = useState<Test[]>([]);
@@ -133,6 +137,8 @@ const TestsPage = () => {
   const [loading, setLoading] = useState(false);
   const [selectedTest, setSelectedTest] = useState<Test | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [viewingTest, setViewingTest] = useState<Test | null>(null);
+  const [testToDelete, setTestToDelete] = useState<Test | null>(null);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -258,7 +264,17 @@ const TestsPage = () => {
     try {
       const response = await patientsAPI.getAll({ limit: 1000 });
       const patientsData = response.data.patients || response.data || [];
-      setPatients(Array.isArray(patientsData) ? patientsData : []);
+      
+      // Transform patients data to expected format if needed
+      const transformedPatients = Array.isArray(patientsData) ? patientsData.map(patient => ({
+        _id: patient._id || patient.patient_id,
+        firstName: patient.firstName || patient.first_name || '',
+        lastName: patient.lastName || patient.last_name || '',
+        email: patient.email || '',
+        phone: patient.phone || ''
+      })) : [];
+      
+      setPatients(transformedPatients);
     } catch (error) {
       console.error('Error loading patients:', error);
       setPatients([]); // Ensure patients is always an array
@@ -355,6 +371,11 @@ const TestsPage = () => {
     }
   };
 
+  const handleView = (test: Test) => {
+    setViewingTest(test);
+    onViewOpen();
+  };
+
   const handleEdit = (test: Test) => {
     setSelectedTest(test);
     setIsEditing(true);
@@ -381,13 +402,20 @@ const TestsPage = () => {
     onOpen();
   };
 
-  const handleDelete = async (testId: string) => {
-    if (!confirm(t("tests.delete_confirmation"))) return;
+  const handleDeleteClick = (test: Test) => {
+    setTestToDelete(test);
+    onDeleteOpen();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!testToDelete) return;
     
     try {
-      await testsAPI.delete(testId);
+      await testsAPI.delete(testToDelete._id);
       toast.success(t("tests.test_deleted"));
       loadTests();
+      onDeleteClose();
+      setTestToDelete(null);
     } catch (error) {
       console.error('Error deleting test:', error);
       toast.error(t("tests.error_deleting"));
@@ -535,7 +563,13 @@ const TestsPage = () => {
         return (
           <div className="relative flex items-center gap-2">
             <Tooltip content={t("tests.view")}>
-              <Button size="sm" variant="flat" color="primary" isIconOnly>
+              <Button 
+                size="sm" 
+                variant="flat" 
+                color="primary" 
+                isIconOnly
+                onPress={() => handleView(test)}
+              >
                 <Eye size={16} />
               </Button>
             </Tooltip>
@@ -568,7 +602,7 @@ const TestsPage = () => {
                   className="text-danger"
                   color="danger"
                   startContent={<Trash2 size={16} />}
-                  onPress={() => handleDelete(test._id)}
+                  onPress={() => handleDeleteClick(test)}
                 >
                   {t("tests.delete")}
                 </DropdownItem>
@@ -1060,6 +1094,372 @@ const TestsPage = () => {
                 </Button>
                 <Button color="primary" onPress={handleSubmit}>
                   {isEditing ? t("tests.update") : t("tests.save")}
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* View Test Modal */}
+      <Modal
+        isOpen={isViewOpen}
+        onClose={onViewClose}
+        size="4xl"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <TestTube className="h-5 w-5" />
+                  {t("tests.test_details")}
+                </div>
+              </ModalHeader>
+              <ModalBody>
+                {viewingTest && (
+                  <div className="space-y-6">
+                    {/* Basic Information */}
+                    <Card>
+                      <CardBody className="p-4">
+                        <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                          <FileText className="h-5 w-5" />
+                          {t("tests.basic_information")}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.test_name")}
+                            </label>
+                            <p className="text-sm font-medium">{viewingTest.testName}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.test_type")}
+                            </label>
+                            <p className="text-sm font-medium">{viewingTest.testType}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.test_date")}
+                            </label>
+                            <p className="text-sm font-medium">
+                              {new Date(viewingTest.testDate).toLocaleDateString('tr-TR')}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.test_time")}
+                            </label>
+                            <p className="text-sm font-medium">{viewingTest.testTime}</p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.priority")}
+                            </label>
+                            <Chip
+                              className="capitalize"
+                              color={priorities.find(p => p.key === viewingTest.priority)?.color as any}
+                              size="sm"
+                              variant="flat"
+                              startContent={getPriorityIcon(viewingTest.priority)}
+                            >
+                              {priorities.find(p => p.key === viewingTest.priority)?.label}
+                            </Chip>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.status")}
+                            </label>
+                            <Chip
+                              className="capitalize"
+                              color={statuses.find(s => s.key === viewingTest.status)?.color as any}
+                              size="sm"
+                              variant="flat"
+                              startContent={getStatusIcon(viewingTest.status)}
+                            >
+                              {statuses.find(s => s.key === viewingTest.status)?.label}
+                            </Chip>
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+
+                    {/* Patient Information */}
+                    <Card>
+                      <CardBody className="p-4">
+                        <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                          <User className="h-5 w-5" />
+                          {t("tests.patient_information")}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.patient_name")}
+                            </label>
+                            <p className="text-sm font-medium">{getPatientName(viewingTest.patientId)}</p>
+                          </div>
+                          {typeof viewingTest.patientId === 'object' && (
+                            <>
+                              <div>
+                                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  {t("tests.patient_phone")}
+                                </label>
+                                <p className="text-sm font-medium">{viewingTest.patientId.phone || '-'}</p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  {t("tests.patient_email")}
+                                </label>
+                                <p className="text-sm font-medium">{viewingTest.patientId.email || '-'}</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </CardBody>
+                    </Card>
+
+                    {/* Staff Information */}
+                    <Card>
+                      <CardBody className="p-4">
+                        <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                          <Stethoscope className="h-5 w-5" />
+                          {t("tests.staff_information")}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.staff_name")}
+                            </label>
+                            <p className="text-sm font-medium">{getStaffName(viewingTest.staffId)}</p>
+                          </div>
+                          {typeof viewingTest.staffId === 'object' && (
+                            <>
+                              <div>
+                                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  {t("tests.staff_role")}
+                                </label>
+                                <p className="text-sm font-medium">{viewingTest.staffId.role || '-'}</p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  {t("tests.staff_specialization")}
+                                </label>
+                                <p className="text-sm font-medium">{viewingTest.staffId.specialization || '-'}</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </CardBody>
+                    </Card>
+
+                    {/* Department Information */}
+                    {viewingTest.departmentId && (
+                      <Card>
+                        <CardBody className="p-4">
+                          <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <Building className="h-5 w-5" />
+                            {t("tests.department_information")}
+                          </h4>
+                          <div>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.department")}
+                            </label>
+                            <p className="text-sm font-medium">{getDepartmentName(viewingTest.departmentId)}</p>
+                          </div>
+                        </CardBody>
+                      </Card>
+                    )}
+
+                    {/* Test Details */}
+                    <Card>
+                      <CardBody className="p-4">
+                        <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                          <TestTube className="h-5 w-5" />
+                          {t("tests.test_details")}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {viewingTest.sampleType && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                {t("tests.sample_type")}
+                              </label>
+                              <p className="text-sm font-medium">{viewingTest.sampleType}</p>
+                            </div>
+                          )}
+                          {viewingTest.cost && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                {t("tests.cost")}
+                              </label>
+                              <p className="text-sm font-medium">₺{viewingTest.cost}</p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {viewingTest.instructions && (
+                          <div className="mt-4">
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.instructions")}
+                            </label>
+                            <p className="text-sm mt-1 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                              {viewingTest.instructions}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {viewingTest.notes && (
+                          <div className="mt-4">
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                              {t("tests.notes")}
+                            </label>
+                            <p className="text-sm mt-1 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                              {viewingTest.notes}
+                            </p>
+                          </div>
+                        )}
+                      </CardBody>
+                    </Card>
+
+                    {/* Results */}
+                    {(viewingTest.results || viewingTest.resultValue) && (
+                      <Card>
+                        <CardBody className="p-4">
+                          <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5" />
+                            {t("tests.results")}
+                          </h4>
+                          <div className="space-y-4">
+                            {viewingTest.resultValue && (
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                    {t("tests.result_value")}
+                                  </label>
+                                  <p className="text-sm font-medium">
+                                    {viewingTest.resultValue} {viewingTest.unit}
+                                  </p>
+                                </div>
+                                {viewingTest.normalRange && (
+                                  <div>
+                                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                      {t("tests.normal_range")}
+                                    </label>
+                                    <p className="text-sm font-medium">{viewingTest.normalRange}</p>
+                                  </div>
+                                )}
+                                {viewingTest.unit && (
+                                  <div>
+                                    <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                      {t("tests.unit")}
+                                    </label>
+                                    <p className="text-sm font-medium">{viewingTest.unit}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {viewingTest.results && (
+                              <div>
+                                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  {t("tests.detailed_results")}
+                                </label>
+                                <p className="text-sm mt-1 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                  {viewingTest.results}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </CardBody>
+                      </Card>
+                    )}
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose}>
+                  {t("tests.close")}
+                </Button>
+                <Button 
+                  color="primary" 
+                  onPress={() => {
+                    onClose();
+                    handleEdit(viewingTest!);
+                  }}
+                  startContent={<Edit size={16} />}
+                >
+                  {t("tests.edit")}
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteOpen}
+        onClose={onDeleteClose}
+        size="md"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 text-danger">
+                  <AlertTriangle className="h-5 w-5" />
+                  {t("tests.delete_confirmation_title")}
+                </div>
+              </ModalHeader>
+              <ModalBody>
+                <div className="space-y-4">
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {t("tests.delete_confirmation_message")}
+                  </p>
+                  {testToDelete && (
+                    <Card>
+                      <CardBody className="p-4 bg-danger-50 dark:bg-danger-900/20">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <TestTube className="h-4 w-4 text-danger" />
+                            <span className="font-medium text-danger">
+                              {testToDelete.testName}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className="font-medium">{t("tests.patient")}:</span> {getPatientName(testToDelete.patientId)}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className="font-medium">{t("tests.test_type")}:</span> {testToDelete.testType}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className="font-medium">{t("tests.test_date")}:</span> {new Date(testToDelete.testDate).toLocaleDateString('tr-TR')}
+                          </div>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  )}
+                  <div className="bg-warning-50 dark:bg-warning-900/20 p-3 rounded-lg border-l-4 border-warning">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-warning mt-0.5" />
+                      <div className="text-sm text-warning-700 dark:text-warning-300">
+                        <strong>{t("tests.warning")}:</strong> {t("tests.delete_warning_message")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="flat" onPress={onClose}>
+                  {t("tests.cancel")}
+                </Button>
+                <Button 
+                  color="danger" 
+                  onPress={handleConfirmDelete}
+                  startContent={<Trash2 size={16} />}
+                >
+                  {t("tests.delete_confirm")}
                 </Button>
               </ModalFooter>
             </>

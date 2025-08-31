@@ -160,7 +160,6 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        console.log('Login attempt with:', req.body);
         
         if (!username || !password) {
             return res.status(400).json({ message: 'Missing required fields' });
@@ -169,24 +168,14 @@ router.post('/login', async (req, res) => {
         const user = await Staff.findOne({ username });
         
         if (!user) {
-            console.log('Invalid credentials: User not found');
             return res.status(400).json({ message: 'Invalid credentials' });
         }
         
-        console.log('User found:', {
-            id: user._id,
-            username: user.username,
-            hasPassword: !!user.password,
-            permLevel: user.permLevel
-        });
-        
         if (!user.password) {
-            console.log('Invalid credentials: No password set');
             return res.status(400).json({ message: 'Invalid credentials' });
         }
         
         const validPassword = await bcrypt.compare(password, user.password);
-        console.log('Password valid:', validPassword);
         
         if (!validPassword) {
             return res.status(400).json({ message: 'Invalid credentials' });
@@ -198,10 +187,8 @@ router.post('/login', async (req, res) => {
             permLevel: user.permLevel 
         }, process.env.JWT_SECRET, { expiresIn: '1h' });
         
-        console.log('Generated token for user:', user.username);
         res.json({ token });
     } catch (error) {
-        console.error('Error during authentication:', error);
         res.status(500).json({ error: 'Error during authentication' });
     }
 });

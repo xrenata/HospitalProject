@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
-import { notificationsAPI } from "@/lib/api";
+import { notificationsAPI, dashboardAPI } from "@/lib/api";
 import toast from "react-hot-toast";
 
 interface Alert {
@@ -87,21 +87,53 @@ export default function AlertsPage() {
     try {
       if (!refreshing) setLoading(true);
       
-      const response = await notificationsAPI.getAll({
-        page: currentPage,
-        limit: 10,
-        filter: selectedTab as 'all' | 'unread' | 'critical',
-      });
-      
-      setAlerts(response.data.alerts);
-      setTotalPages(response.data.pagination.totalPages);
-      setTotalCount(response.data.totalCount);
-      setUnreadCount(response.data.unreadCount);
+      // Try dashboard API first for real alerts
+      let response;
+      try {
+        response = await dashboardAPI.getAlerts();
+        console.log('Dashboard API alerts response:', response.data);
+        
+        // Transform dashboard alerts to expected format
+        const dashboardAlerts = response.data.alerts || [];
+        
+        // Filter based on selected tab
+        let filteredAlerts = dashboardAlerts;
+        if (selectedTab === 'unread') {
+          filteredAlerts = dashboardAlerts.filter((alert: any) => !alert.isRead);
+        } else if (selectedTab === 'critical') {
+          filteredAlerts = dashboardAlerts.filter((alert: any) => alert.type === 'critical');
+        }
+        
+        // Pagination for dashboard alerts
+        const startIndex = (currentPage - 1) * 10;
+        const endIndex = startIndex + 10;
+        const paginatedAlerts = filteredAlerts.slice(startIndex, endIndex);
+        
+        setAlerts(paginatedAlerts);
+        setTotalPages(Math.ceil(filteredAlerts.length / 10));
+        setTotalCount(filteredAlerts.length);
+        setUnreadCount(dashboardAlerts.filter((alert: any) => !alert.isRead).length);
+        
+      } catch (dashboardError) {
+        console.log('Dashboard API failed, trying notifications API:', dashboardError);
+        
+        // Fallback to notifications API
+        response = await notificationsAPI.getAll({
+          page: currentPage,
+          limit: 10,
+          filter: selectedTab as 'all' | 'unread' | 'critical',
+        });
+        
+        setAlerts(response.data.alerts);
+        setTotalPages(response.data.pagination.totalPages);
+        setTotalCount(response.data.totalCount);
+        setUnreadCount(response.data.unreadCount);
+      }
       
     } catch (error: any) {
-      console.error('Error loading alerts:', error);
+      console.error('Error loading alerts from both APIs:', error);
       
-      // Fallback to mock data if API fails
+      // Fallback to mock data if both APIs fail
       console.log('Falling back to mock data...');
       const mockResponse = getMockAlerts();
       setAlerts(mockResponse.alerts);
@@ -123,7 +155,14 @@ export default function AlertsPage() {
 
   const markAsRead = async (alertId: string) => {
     try {
-      await notificationsAPI.markAsRead(alertId);
+      // Use the appropriate API based on alert ID format
+      if (alertId.startsWith('notification_') || alertId.startsWith('treatment_') || alertId.startsWith('appointment_')) {
+        // Dashboard alerts - use dashboard API
+        await dashboardAPI.markAlertAsRead(alertId);
+      } else {
+        // Notification alerts - use notifications API  
+        await notificationsAPI.markAsRead(alertId);
+      }
       
       setAlerts(prevAlerts => 
         prevAlerts.map(alert => 

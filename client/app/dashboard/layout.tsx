@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useI18n } from '@/contexts/I18nContext';
+import { dashboardAPI } from '@/lib/api';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -43,6 +44,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [alertCount, setAlertCount] = useState(0);
   const { user, logout } = useAuth();
   const { t, language, setLanguage, languages } = useI18n();
   const { theme, setTheme } = useTheme();
@@ -94,7 +96,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     {
       name: "Communication",
       items: [
-        { icon: <Bell size={20} />, label: t('navigation.alerts') || 'Notifications', href: '/dashboard/alerts', requiredPermission: 1, badge: 3 },
+        { icon: <Bell size={20} />, label: t('navigation.alerts') || 'Notifications', href: '/dashboard/alerts', requiredPermission: 1, badge: alertCount > 0 ? alertCount : undefined },
         { icon: <MessageSquare size={20} />, label: 'Complaints', href: '/dashboard/complaints', requiredPermission: 1 },
         { icon: <Star size={20} />, label: 'Feedback', href: '/dashboard/feedback', requiredPermission: 1 },
       ]
@@ -124,6 +126,27 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
+
+  // Load alert count
+  useEffect(() => {
+    const loadAlertCount = async () => {
+      try {
+        const response = await dashboardAPI.getAlerts();
+        const unreadAlerts = response.data.alerts?.filter((alert: any) => !alert.isRead) || [];
+        setAlertCount(unreadAlerts.length);
+      } catch (error) {
+        console.error('Error loading alert count:', error);
+        setAlertCount(0);
+      }
+    };
+
+    if (user) {
+      loadAlertCount();
+      // Refresh alert count every 30 seconds
+      const interval = setInterval(loadAlertCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   // Command Palette Keyboard Shortcuts
   useEffect(() => {
@@ -237,7 +260,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
 
             {/* Navigation Items */}
-            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 px-4 py-4">
+            <div className="flex-1 overflow-y-auto px-4 py-4" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+              <style jsx>{`
+                div::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
               <div className="space-y-6">
                 {filteredMenuCategories.map((category, categoryIndex) => (
                   <div key={category.name} className="space-y-2">

@@ -320,14 +320,10 @@ export default function ReportsPage() {
                     <span className="text-xs text-gray-500">
                       {template.fields.length} alan
                     </span>
-                    <Button 
-                      size="sm" 
-                      color="primary" 
-                      variant="flat"
-                      startContent={<Play size={14} />}
-                    >
-                      Oluştur
-                    </Button>
+                    <div className="flex items-center gap-2 text-primary">
+                      <Play size={14} />
+                      <span className="text-sm font-medium">Oluştur</span>
+                    </div>
                   </div>
                 </CardBody>
               </Card>

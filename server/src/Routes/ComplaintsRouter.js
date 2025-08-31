@@ -52,7 +52,7 @@ const {
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get("/complaints", getAllComplaints)
+router.get("/", getAllComplaints)
 
 /**
  * @swagger
@@ -113,7 +113,7 @@ router.get("/complaints", getAllComplaints)
  *                   type: string
  *                   example: "Database query failed"
  */
-router.get("/complaints/:complaint_id", getComplaint)
+router.get("/:id", getComplaint)
 
 /**
  * @swagger
@@ -180,7 +180,7 @@ router.get("/complaints/:complaint_id", getComplaint)
  *                   type: string
  *                   example: "Database query failed"
  */
-router.post("/complaints", createComplaint)
+router.post("/", createComplaint)
 
 /**
  * @swagger
@@ -248,7 +248,7 @@ router.post("/complaints", createComplaint)
  *                   type: string
  *                   example: "Database query failed"
  */
-router.put("/complaints/:complaint_id", updateComplaint)
+router.put("/:id", updateComplaint)
 
 /**
  * @swagger
@@ -296,6 +296,6 @@ router.put("/complaints/:complaint_id", updateComplaint)
  *                   type: string
  *                   example: "Database query failed"
  */
-router.delete("/complaints/:complaint_id", deleteComplaint)
+router.delete("/:id", deleteComplaint)
 
 module.exports = router

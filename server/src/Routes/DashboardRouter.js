@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Patient, Appointment, Staff, Treatment, Room } = require('../Modules/Database/models');
+const { Patient, Appointment, Staff, Treatment, Room, Notification } = require('../Modules/Database/models');
 
 /**
  * @swagger
@@ -90,8 +90,14 @@ router.get('/stats', async (req, res) => {
         const availableRooms = totalRooms - occupiedRooms;
 
         // Get real data for pending tests and critical alerts
-        const pendingTests = treatments.filter(t => t.status === 'pending').length;
-        const criticalAlerts = treatments.filter(t => t.priority === 'critical' || t.status === 'critical').length;
+        const pendingTests = treatments.filter(t => t.status === 'ongoing').length;
+        
+        // Get critical alerts from notifications
+        const criticalNotifications = await Notification.find({ 
+            type: 'critical',
+            isRead: false 
+        });
+        const criticalAlerts = criticalNotifications.length;
 
         const stats = {
             totalPatients,
@@ -164,7 +170,7 @@ router.get('/recent-activity', async (req, res) => {
         // Get recent appointments
         const recentAppointments = await Appointment.find()
             .populate('patientId', 'firstName lastName')
-            .populate('staffId', 'firstName lastName')
+            .populate('staffId', 'name role')
             .sort({ createdAt: -1 })
             .limit(limit);
 
@@ -175,7 +181,7 @@ router.get('/recent-activity', async (req, res) => {
                 : 'Unknown Patient';
             
             const staffName = appointment.staffId 
-                ? `${appointment.staffId.firstName} ${appointment.staffId.lastName}`
+                ? appointment.staffId.name
                 : 'Unknown Staff';
 
             const now = new Date();
@@ -273,15 +279,26 @@ router.post('/emergency-alert', async (req, res) => {
             return res.status(400).json({ message: 'Type and description are required' });
         }
 
-        // Create a new treatment record for the emergency alert
-        const emergencyAlert = new Treatment({
-            treatmentType: 'Emergency Alert',
-            treatmentName: `${type.toUpperCase()} Alert`,
-            description: description,
-            status: 'critical',
-            priority: 'critical',
-            startDate: new Date(),
-            notes: `Emergency alert reported by: ${req.user ? req.user.username : 'Unknown'}`,
+        // Create a new notification record for the emergency alert
+        const emergencyAlert = new Notification({
+            title: `${type.toUpperCase()} Emergency Alert`,
+            message: description,
+            type: 'critical',
+            priority: 'high',
+            category: 'security',
+            isRead: false,
+            sender: {
+                userId: req.user ? req.user._id : null,
+                name: req.user ? req.user.username : 'System',
+                role: req.user ? req.user.role : 'System',
+                system: !req.user
+            },
+            targetRoles: ['Admin', 'Doktor', 'Hemşire', 'Sekreter', 'Teknisyen'], // Alert all staff
+            data: {
+                emergencyType: type,
+                reportedAt: new Date(),
+                reportedBy: req.user ? req.user.username : 'Unknown'
+            },
             createdAt: new Date(),
             updatedAt: new Date()
         });
@@ -352,14 +369,15 @@ router.post('/emergency-alert', async (req, res) => {
  */
 router.get('/alerts', async (req, res) => {
     try {
-        // Get real alerts from treatments and appointments
-        const criticalTreatments = await Treatment.find({ 
-            $or: [
-                { status: 'critical' },
-                { priority: 'high' },
-                { priority: 'critical' }
-            ]
-        }).populate('patientId', 'firstName lastName').limit(10);
+        // Get real alerts from notifications and treatments
+        const criticalNotifications = await Notification.find({
+            type: 'critical',
+            isRead: false
+        }).limit(10);
+        
+        const ongoingTreatments = await Treatment.find({ 
+            status: 'ongoing'
+        }).populate('patientId', 'firstName lastName').limit(5);
 
         const urgentAppointments = await Appointment.find({
             appointmentDate: {
@@ -370,19 +388,32 @@ router.get('/alerts', async (req, res) => {
 
         const alerts = [];
 
-        // Add critical treatment alerts
-        criticalTreatments.forEach((treatment, index) => {
+        // Add critical notifications
+        criticalNotifications.forEach((notification) => {
+            alerts.push({
+                id: `notification_${notification._id}`,
+                type: notification.type,
+                title: notification.title,
+                message: notification.message,
+                timestamp: notification.createdAt || new Date().toISOString(),
+                priority: notification.priority,
+                isRead: notification.isRead
+            });
+        });
+
+        // Add ongoing treatment alerts
+        ongoingTreatments.forEach((treatment) => {
             const patientName = treatment.patientId 
                 ? `${treatment.patientId.firstName} ${treatment.patientId.lastName}`
                 : 'Unknown Patient';
             
             alerts.push({
                 id: `treatment_${treatment._id}`,
-                type: 'critical',
-                title: 'Critical Patient Alert',
-                message: `Patient ${patientName} requires immediate attention - ${treatment.description || 'Critical condition'}`,
+                type: 'warning',
+                title: 'Ongoing Treatment',
+                message: `Patient ${patientName} has ongoing treatment - ${treatment.description || 'Treatment in progress'}`,
                 timestamp: treatment.createdAt || new Date().toISOString(),
-                priority: 'high',
+                priority: 'medium',
                 isRead: false
             });
         });
@@ -460,11 +491,32 @@ router.patch('/alerts/:id/read', async (req, res) => {
     try {
         const { id } = req.params;
         
-        // For treatment-based alerts, you could update the treatment status
-        if (id.startsWith('treatment_')) {
+        // Handle different alert types
+        if (id.startsWith('notification_')) {
+            // Notification-based alerts
+            const notificationId = id.replace('notification_', '');
+            await Notification.findByIdAndUpdate(notificationId, { 
+                isRead: true,
+                updatedAt: new Date()
+            });
+        } else if (id.startsWith('treatment_')) {
+            // Treatment-based alerts
             const treatmentId = id.replace('treatment_', '');
             await Treatment.findByIdAndUpdate(treatmentId, { 
                 isAlertRead: true,
+                updatedAt: new Date()
+            });
+        } else if (id.startsWith('appointment_')) {
+            // Appointment-based alerts
+            const appointmentId = id.replace('appointment_', '');
+            await Appointment.findByIdAndUpdate(appointmentId, { 
+                isAlertRead: true,
+                updatedAt: new Date()
+            });
+        } else {
+            // Try to find as notification by default
+            await Notification.findByIdAndUpdate(id, { 
+                isRead: true,
                 updatedAt: new Date()
             });
         }
@@ -542,7 +594,7 @@ router.get('/tests', async (req, res) => {
         // Get real test data from treatments
         const treatments = await Treatment.find()
             .populate('patientId', 'firstName lastName')
-            .populate('staffId', 'firstName lastName')
+            .populate('staffId', 'name role')
             .sort({ createdAt: -1 })
             .limit(20);
 
@@ -552,7 +604,7 @@ router.get('/tests', async (req, res) => {
                 : 'Unknown Patient';
             
             const staffName = treatment.staffId 
-                ? `Dr. ${treatment.staffId.firstName} ${treatment.staffId.lastName}`
+                ? `Dr. ${treatment.staffId.name}`
                 : 'Unknown Doctor';
 
             return {
