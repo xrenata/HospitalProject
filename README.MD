@@ -1,250 +1,296 @@
-# Hospital Backend
+# Hospital Management System
 
-The **Hospital Backend** is a Node.js-based API developed to manage hospital operations. It provides tools for handling hospital staff, patients, equipment, appointments, surgeries, and other related tasks efficiently.
+A modern and comprehensive hospital management system. This project is a full-stack web application developed to manage hospital operations efficiently.
 
-## Features
+## 🏥 About the Project
 
-- Patient and staff management
-- Equipment and room tracking
-- Appointment scheduling and management
-- Surgery team and procedure handling
-- Laboratory test and treatment records
-- Complaint management system
-- Insurance information tracking
+This hospital management system is designed to efficiently manage hospital staff, patients, equipment, appointments, surgeries, and other related tasks. Built with modern web technologies, it features a user-friendly interface and a powerful backend API that simplifies hospital management.
 
-## Requirements
+## ✨ Features
 
-To run this project, you need the following installed on your machine:
+### 🎯 Core Features
+- **Patient Management**: Patient registration, information updates, and tracking system
+- **Staff Management**: Doctor, nurse, and other staff management
+- **Appointment System**: Automated appointment scheduling and management
+- **Surgery Management**: Surgery planning and team management
+- **Room and Equipment Tracking**: Hospital rooms and medical equipment management
+- **Medication Management**: Drug inventory tracking and prescription management
+- **Laboratory Tests**: Test results and reporting
+- **Insurance Management**: Patient insurance information tracking
+- **Complaint Management**: Patient complaints and feedback system
+- **Analytics and Reporting**: Detailed analysis and reporting tools
+
+### 🎨 User Interface
+- Modern and responsive design
+- Dark/Light theme support
+- Turkish and English language support
+- User-friendly dashboard
+- Real-time notifications
+
+## 🛠️ Technologies
+
+### Frontend (Client)
+- **Next.js 15** - React framework
+- **TypeScript** - Type safety
+- **HeroUI v2** - Modern UI components
+- **Tailwind CSS** - Utility-first CSS framework
+- **Framer Motion** - Animations
+- **React Hook Form** - Form management
+- **Axios** - HTTP client
+- **next-themes** - Theme management
+
+### Backend (Server)
+- **Node.js** - JavaScript runtime
+- **Express.js** - Web framework
+- **MongoDB** - NoSQL database
+- **Mongoose** - MongoDB object modeling
+- **JWT** - Authentication
+- **bcrypt** - Password hashing
+- **Swagger** - API documentation
+- **CORS** - Cross-origin resource sharing
+
+## 📋 Requirements
+
+To run this project, you need the following software installed:
 
 - [Node.js](https://nodejs.org/) (v18 or higher)
-- [MySQL](https://www.mysql.com/) (v7.1 or higher)
+- [MongoDB](https://www.mongodb.com/) (v4.4 or higher)
+- [pnpm](https://pnpm.io/) (recommended) or npm
 
-## Installation
+## 🚀 Installation
 
-1. Clone the repository:
+### 1. Clone the Repository
 
-   ```bash
-   git clone https://github.com/xrenata/hospitalbackend.git
-   cd hospitalbackend
-   ```
+```bash
+git clone https://github.com/xrenata/hospital.git
+cd hospital
+```
 
-2. Install the required dependencies:
+### 2. Backend Setup
 
-   ```bash
-   npm install
-   ```
+```bash
+cd server
+npm install
+```
 
-3. Create the MySQL database by running:
+### 3. Database Setup
 
-   ```sql
-   CREATE DATABASE HospitalManagement;
-   ```
+Make sure MongoDB is running on your system. The application will automatically create the database if it doesn't exist.
 
-4. Set up the `.env` file in the project root and add the following environment variables:
+### 4. Backend Environment Variables
 
-   ```plaintext
-   # Database Variables
-   MYSQL_USER=root
-   DATABASE_NAME=HospitalManagement
-   DATABASE_HOST=localhost
-   DATABASE_PASSWORD=your-password
+Create a `.env` file in the `server` directory:
 
-   # Express Variables
-   HOST=localhost
-   PORT=3000
-   ```
+```plaintext
+# Database Variables
+MONGODB_URI=mongodb://localhost:27017/hospital_management
 
-7. Start the server:
+# Express Variables
+HOST=localhost
+PORT=3000
+JWT_SECRET=your-secret-key
+```
 
-   ```bash
-   npm start
-   ```
+### 5. Frontend Setup
 
-# Improved API Endpoints Documentation
+```bash
+cd ../client
+pnpm install
+```
 
-I've reorganized the API endpoints by resource type and ensured consistent formatting:
+### 6. Frontend Environment Variables
 
-## Authentication
+Create a `.env.local` file in the `client` directory:
+
+```plaintext
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
+```
+
+## 🏃‍♂️ Running the Application
+
+### Start the Backend
+
+```bash
+cd server
+npm run dev
+```
+
+The backend server will run at `http://localhost:3000`.
+
+### Start the Frontend
+
+```bash
+cd client
+pnpm dev
+```
+
+The frontend application will run at `http://localhost:3001`.
+
+## 📊 Database Schema
+
+The project uses MongoDB with Mongoose schemas for data modeling. Key collections include:
+
+- **Patients**: Patient information and medical history
+- **Staff**: Hospital staff and personnel data
+- **Departments**: Hospital departments and their details
+- **Appointments**: Patient appointment scheduling
+- **Surgeries**: Surgery planning and management
+- **Medications**: Drug inventory and prescriptions
+- **Rooms**: Hospital room management
+- **Equipment**: Medical equipment tracking
+
+## 🔧 API Endpoints
+
+### Authentication
 | HTTP Method | Endpoint | Description |
 |------------|----------|-------------|
 | POST | `/api/auth/register` | Create a new user |
-| POST | `/api/auth/login` | Login to user account |
+| POST | `/api/auth/login` | User login |
 
-## Hospitals
+### Hospitals
 | HTTP Method | Endpoint | Description |
 |------------|----------|-------------|
-| GET | `/api/hospitals` | Get a list of all hospitals |
-| GET | `/api/hospitals/{hospital_id}` | Get a specific hospital |
-| POST | `/api/hospitals` | Create a new hospital |
-| PUT | `/api/hospitals/{hospital_id}` | Update a specific hospital |
-| DELETE | `/api/hospitals/{hospital_id}` | Delete a specific hospital |
+| GET | `/api/hospitals` | Get all hospitals |
+| GET | `/api/hospitals/{hospital_id}` | Get specific hospital |
+| POST | `/api/hospitals` | Create new hospital |
+| PUT | `/api/hospitals/{hospital_id}` | Update hospital information |
+| DELETE | `/api/hospitals/{hospital_id}` | Delete hospital |
 
-## Patients
+### Patients
 | HTTP Method | Endpoint | Description |
 |------------|----------|-------------|
-| GET | `/api/patients` | Get a list of all patients |
-| GET | `/api/patients/{patient_id}` | Get a specific patient |
-| POST | `/api/patients` | Register a new patient |
-| PUT | `/api/patients/{patient_id}` | Update a specific patient |
-| DELETE | `/api/patients/{patient_id}` | Delete a specific patient |
+| GET | `/api/patients` | Get all patients |
+| GET | `/api/patients/{patient_id}` | Get specific patient |
+| POST | `/api/patients` | Register new patient |
+| PUT | `/api/patients/{patient_id}` | Update patient information |
+| DELETE | `/api/patients/{patient_id}` | Delete patient |
 
-## Appointments
+### Appointments
 | HTTP Method | Endpoint | Description |
 |------------|----------|-------------|
-| GET | `/api/appointments` | List all appointments |
-| GET | `/api/appointments/{appointment_id}` | Get a specific appointment |
-| POST | `/api/appointments` | Create a new appointment |
-| PUT | `/api/appointments/{appointment_id}` | Update a specific appointment |
-| DELETE | `/api/appointments/{appointment_id}` | Delete a specific appointment |
+| GET | `/api/appointments` | Get all appointments |
+| GET | `/api/appointments/{appointment_id}` | Get specific appointment |
+| POST | `/api/appointments` | Create new appointment |
+| PUT | `/api/appointments/{appointment_id}` | Update appointment information |
+| DELETE | `/api/appointments/{appointment_id}` | Delete appointment |
 
-## Surgeries
+### Surgeries
 | HTTP Method | Endpoint | Description |
 |------------|----------|-------------|
-| GET | `/api/surgeries` | List all surgeries |
-| GET | `/api/surgeries/{surgery_id}` | Get a specific surgery |
-| POST | `/api/surgeries` | Create a new surgery |
-| PUT | `/api/surgeries/{surgery_id}` | Update a specific surgery |
-| DELETE | `/api/surgeries/{surgery_id}` | Delete a specific surgery |
+| GET | `/api/surgeries` | Get all surgeries |
+| GET | `/api/surgeries/{surgery_id}` | Get specific surgery |
+| POST | `/api/surgeries` | Create new surgery |
+| PUT | `/api/surgeries/{surgery_id}` | Update surgery information |
+| DELETE | `/api/surgeries/{surgery_id}` | Delete surgery |
 
-## Surgery Teams
+### Staff
 | HTTP Method | Endpoint | Description |
 |------------|----------|-------------|
-| GET | `/api/surgery-team` | List all surgery teams |
-| GET | `/api/surgery-team/{surgery_team_id}` | Get a specific surgery team |
-| POST | `/api/surgery-team` | Create a new surgery team |
-| PUT | `/api/surgery-team/{surgery_team_id}` | Update a specific surgery team |
-| DELETE | `/api/surgery-team/{surgery_team_id}` | Delete a specific surgery team |
+| GET | `/api/staff` | Get all staff members |
+| GET | `/api/staff/{staff_id}` | Get specific staff member |
+| POST | `/api/staff` | Add new staff member |
+| PUT | `/api/staff/{staff_id}` | Update staff information |
+| DELETE | `/api/staff/{staff_id}` | Delete staff member |
 
-## Staff
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/staff` | List all staff members |
-| GET | `/api/staff/{staff_id}` | Get a specific staff member |
-| POST | `/api/staff` | Create a new staff member |
-| PUT | `/api/staff/{staff_id}` | Update a specific staff member |
-| DELETE | `/api/staff/{staff_id}` | Delete a specific staff member |
+### Other Endpoints
+- **Rooms**: `/api/rooms`
+- **Medications**: `/api/medications`
+- **Insurance**: `/api/insurance`
+- **Visits**: `/api/visits`
+- **Prescriptions**: `/api/prescriptions`
+- **Shifts**: `/api/shifts`
+- **Feedback**: `/api/feedback`
+- **Complaints**: `/api/complaints`
+- **Equipment**: `/api/equipment`
+- **Tests**: `/api/tests`
+- **Treatments**: `/api/treatments`
+- **Departments**: `/api/departments`
+- **Analytics**: `/api/analytics`
+- **Reports**: `/api/reports`
 
-## Staff Departments
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/staff_departments` | List all staff departments |
-| GET | `/api/staff_departments/{staff_department_id}` | Get a specific staff department |
-| POST | `/api/staff_departments` | Create a new staff department |
-| PUT | `/api/staff_departments/{staff_department_id}` | Update a specific staff department |
-| DELETE | `/api/staff_departments/{staff_department_id}` | Delete a specific staff department |
+**Swagger Documentation**: You can access the complete API documentation at [Swagger](http://localhost:3000/api-docs) on your local environment.
 
-## Rooms
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/rooms` | List all rooms |
-| GET | `/api/rooms/{room_id}` | Get a specific room |
-| POST | `/api/rooms` | Create a new room |
-| PUT | `/api/rooms/{room_id}` | Update a specific room |
-| DELETE | `/api/rooms/{room_id}` | Delete a specific room |
+## 📁 Project Structure
 
-## Medications
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/medications` | List all medications |
-| GET | `/api/medications/{medication_id}` | Get a specific medication |
-| POST | `/api/medications` | Create a new medication |
-| PUT | `/api/medications/{medication_id}` | Update a specific medication |
-| DELETE | `/api/medications/{medication_id}` | Delete a specific medication |
-
-## Insurance
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/insurance` | List all insurance policies |
-| GET | `/api/insurance/{id}` | Get a specific insurance policy |
-| POST | `/api/insurance` | Create a new insurance policy |
-| PUT | `/api/insurance/{id}` | Update a specific insurance policy |
-| DELETE | `/api/insurance/{id}` | Delete a specific insurance policy |
-
-## Visits
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/visits` | List all visits |
-| GET | `/api/visits/{id}` | Get a specific visit |
-| POST | `/api/visits` | Create a new visit |
-| PUT | `/api/visits/{id}` | Update a specific visit |
-| DELETE | `/api/visits/{id}` | Delete a specific visit |
-
-## Prescriptions
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/prescriptions` | List all prescriptions |
-| GET | `/api/prescriptions/{id}` | Get a specific prescription |
-| POST | `/api/prescriptions` | Create a new prescription |
-| PUT | `/api/prescriptions/{id}` | Update a specific prescription |
-| DELETE | `/api/prescriptions/{id}` | Delete a specific prescription |
-
-## Shifts
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/shifts` | List all shifts |
-| GET | `/api/shifts/{id}` | Get a specific shift |
-| POST | `/api/shifts` | Create a new shift |
-| PUT | `/api/shifts/{id}` | Update a specific shift |
-| DELETE | `/api/shifts/{id}` | Delete a specific shift |
-
-## Feedback
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/feedback` | List all feedback |
-| GET | `/api/feedback/{id}` | Get a specific feedback |
-| POST | `/api/feedback` | Create a new feedback |
-| PUT | `/api/feedback/{id}` | Update a specific feedback |
-| DELETE | `/api/feedback/{id}` | Delete a specific feedback |
-
-**Swagger:** You can reach full documentation from [Swagger](http://localhost:3000/api-docs) on your local.
-
-## Environment Variables Table
-
-| Variable Name     | Description                         | Example Value        |
-|-------------------|-------------------------------------|----------------------|
-| `MYSQL_USER`      | MySQL username                     | `root`               |
-| `DATABASE_NAME`   | Name of the database               | `HospitalManagement` |
-| `DATABASE_HOST`   | Hostname or IP of the database      | `localhost`          |
-| `DATABASE_PASSWORD` | MySQL user password              | `your-password`      |
-| `HOST`            | Express server host address         | `localhost`          |
-| `PORT`            | Port number for the Express server  | `3000`               |
-| `JWT_SECRET`            | Secret key for jwt signature  | `secret`               |
-
-
-## Database Schema
-
-Below is the database schema for the Hospital Backend API:
-
-![Database Schema](./src/Modules/Setup/Database.png)
-
-## Project Structure
-
-```plaintext
-hospital-backend/src
-├── src/
-    ├── Routes/          # API endpoint routes
-    ├── Controllers/     # Business logic controllers
-    └── Modules/         # Helpers
-├── .env                 # Environment variables file
-├── package.json         # Project metadata and dependencies
-└── README.md            # Documentation
+```
+hospital/
+├── client/                 # Frontend (Next.js)
+│   ├── app/               # Next.js app directory
+│   │   ├── dashboard/     # Dashboard pages
+│   │   ├── login/         # Login page
+│   │   └── layout.tsx     # Main layout
+│   ├── components/        # React components
+│   ├── config/           # Configuration files
+│   ├── contexts/         # React contexts
+│   ├── lib/              # Helper functions
+│   ├── locales/          # Language files
+│   ├── styles/           # CSS files
+│   └── types/            # TypeScript types
+├── server/               # Backend (Node.js)
+│   ├── src/
+│   │   ├── Controllers/  # Business logic controllers
+│   │   ├── Routes/       # API endpoint routes
+│   │   └── Modules/      # Helper modules
+│   │       └── Database/ # MongoDB models and connection
+│   ├── scripts/          # Database scripts
+│   └── app.js           # Main application file
+└── README.MD            # This file
 ```
 
-## Technologies Used
+## 🌍 Environment Variables
 
-- **Node.js**: Backend development
-- **Express.js**: API routing
-- **MySQL**: Relational database
-- **dotenv**: Manage environment variables
+### Backend (.env)
+| Variable Name | Description | Example Value |
+|---------------|-------------|---------------|
+| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/hospital_management` |
+| `HOST` | Express server host address | `localhost` |
+| `PORT` | Express server port | `3000` |
+| `JWT_SECRET` | JWT signature key | `your-secret-key` |
 
-## Contribution Guidelines
+### Frontend (.env.local)
+| Variable Name | Description | Example Value |
+|---------------|-------------|---------------|
+| `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:3000/api` |
 
-1. Fork this repository.
-2. Create a new branch: `git checkout -b feature/new-feature`.
-3. Make your changes and commit them: `git commit -m 'Add a new feature'`.
-4. Push your branch: `git push origin feature/new-feature`.
-5. Open a Pull Request.
+## 🗄️ Database Setup
 
-## Contact
+### Automatic Setup
+To automatically populate the database with sample data:
 
-If you encounter any issues or have suggestions, feel free to reach out at: ![Emirhan](https://lantern.rest/api/v1/users/937316083533230110?svg=1) ![HasanBocek](https://lantern.rest/api/v1/users/903614114662858814?svg=1)
+```bash
+cd server
+npm run seed
+```
+
+### Manual Setup
+The application will automatically create the MongoDB database and collections when it first connects.
+
+## 🤝 Contributing
+
+1. Fork this repository
+2. Create a new branch: `git checkout -b feature/new-feature`
+3. Make your changes and commit them: `git commit -m 'Add new feature'`
+4. Push your branch: `git push origin feature/new-feature`
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+## 📞 Contact
+
+If you encounter any issues or have suggestions, feel free to reach out to the developers:
+
+- ![Emirhan](https://lantern.rest/api/v1/users/937316083533230110?svg=1)
+- ![HasanBocek](https://lantern.rest/api/v1/users/903614114662858814?svg=1)
+
+## 🙏 Acknowledgments
+
+This project was developed using the following open-source projects:
+
+- [Next.js](https://nextjs.org/)
+- [HeroUI](https://heroui.com/)
+- [Express.js](https://expressjs.com/)
+- [MongoDB](https://www.mongodb.com/)
+- [Mongoose](https://mongoosejs.com/)
+- [Tailwind CSS](https://tailwindcss.com/)
