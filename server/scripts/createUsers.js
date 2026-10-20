@@ -1,8 +1,16 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { connectDB } = require('./src/Modules/Database/db');
-const { Staff } = require('./src/Modules/Database/models');
+const { connectDB } = require('../src/Modules/Database/db');
+const { Staff } = require('../src/Modules/Database/models');
+
+// Passwords come from env (SEED_ADMIN_PASSWORD, ...) or are generated randomly and printed once
+const passwords = {
+    admin: process.env.SEED_ADMIN_PASSWORD || crypto.randomBytes(9).toString('base64url'),
+    doctor: process.env.SEED_DOCTOR_PASSWORD || crypto.randomBytes(9).toString('base64url'),
+    nurse: process.env.SEED_NURSE_PASSWORD || crypto.randomBytes(9).toString('base64url'),
+};
 
 async function createDefaultUser() {
     try {
@@ -22,11 +30,10 @@ async function createDefaultUser() {
             });
         } else {
             // Create default admin user
-            const hashedPassword = await bcrypt.hash('admin123', 10);
+            const hashedPassword = await bcrypt.hash(passwords.admin, 10);
             
             const adminUser = new Staff({
-                firstName: 'Admin',
-                lastName: 'User',
+                name: 'Admin User',
                 role: 'Admin',
                 email: 'admin@hospital.com',
                 username: 'admin',
@@ -57,11 +64,10 @@ async function createDefaultUser() {
                 _id: existingDoctor._id
             });
         } else {
-            const hashedPassword = await bcrypt.hash('doctor123', 10);
+            const hashedPassword = await bcrypt.hash(passwords.doctor, 10);
             
             const doctorUser = new Staff({
-                firstName: 'John',
-                lastName: 'Smith',
+                name: 'John Smith',
                 role: 'Doctor',
                 email: 'doctor@hospital.com',
                 username: 'doctor',
@@ -92,11 +98,10 @@ async function createDefaultUser() {
                 _id: existingNurse._id
             });
         } else {
-            const hashedPassword = await bcrypt.hash('nurse123', 10);
+            const hashedPassword = await bcrypt.hash(passwords.nurse, 10);
             
             const nurseUser = new Staff({
-                firstName: 'Sarah',
-                lastName: 'Johnson',
+                name: 'Sarah Johnson',
                 role: 'Nurse',
                 email: 'nurse@hospital.com',
                 username: 'nurse',
@@ -117,9 +122,9 @@ async function createDefaultUser() {
         }
 
         console.log('\nUser credentials:');
-        console.log('Admin: username=admin, password=admin123, permLevel=3');
-        console.log('Doctor: username=doctor, password=doctor123, permLevel=2');
-        console.log('Nurse: username=nurse, password=nurse123, permLevel=1');
+        console.log(`Admin: username=admin, password=${passwords.admin}, permLevel=3`);
+        console.log(`Doctor: username=doctor, password=${passwords.doctor}, permLevel=2`);
+        console.log(`Nurse: username=nurse, password=${passwords.nurse}, permLevel=1`);
 
     } catch (error) {
         console.error('Error creating users:', error);

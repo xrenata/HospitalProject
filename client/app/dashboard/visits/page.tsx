@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -22,8 +21,9 @@ import {
   useDisclosure,
   Select,
   SelectItem,
-  Textarea,
-} from "@heroui/react";
+  Textarea
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { ClipboardList, Search, Trash2, Edit, Plus, Eye } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -34,9 +34,12 @@ import { formatDate, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 import PatientAutocomplete from "@/components/PatientAutocomplete";
 
+import DataSummary from "@/components/DataSummary";
+import DateField from '@/components/DateField';
+import TimeField from '@/components/TimeField';
 export default function VisitsPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
+  const { user, can, canWrite } = useAuth();
+  const { t, te } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [visits, setVisits] = useState<Visit[]>([]);
@@ -350,8 +353,8 @@ export default function VisitsPage() {
         );
       case "status":
         return (
-          <Chip color={getStatusColor(visit.status || "")} size="sm">
-            {t(`visits.${visit.status}`) || visit.status || "scheduled"}
+          <Chip variant="flat" color={getStatusColor(visit.status || "")} size="sm">
+            {te(`visits.${visit.status}`, visit.status || "scheduled")}
           </Chip>
         );
       case "cost":
@@ -360,13 +363,13 @@ export default function VisitsPage() {
         const visitId = visit.visit_id || visit._id || visit.id?.toString() || "";
         return (
           <div className="flex gap-2 items-center">
-            <Button size="sm" color="secondary" variant="flat" onPress={() => handleViewVisit(visit)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleViewVisit(visit)}>
               <Eye size={16} />
             </Button>
-            <Button size="sm" color="primary" variant="flat" onPress={() => handleEditVisit(visit)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditVisit(visit)}>
               <Edit size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('visits') && (
               <>
                 <Select
                   size="sm"
@@ -379,13 +382,13 @@ export default function VisitsPage() {
                       handleStatusChange(visitId, newStatus);
                     }
                   }}
-                >
+               >
                   <SelectItem key="scheduled">{t("visits.scheduled")}</SelectItem>
                   <SelectItem key="in-progress">{t("visits.in_progress")}</SelectItem>
                   <SelectItem key="completed">{t("visits.completed")}</SelectItem>
                   <SelectItem key="cancelled">{t("visits.cancelled")}</SelectItem>
                 </Select>
-                <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteVisit(visit)}>
+                <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeleteVisit(visit)}>
                   <Trash2 size={16} />
                 </Button>
               </>
@@ -412,10 +415,10 @@ export default function VisitsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("visits.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("visits.subtitle")}
           </p>
         </div>
@@ -424,6 +427,8 @@ export default function VisitsPage() {
           {t("visits.add_visit")}
         </Button>
       </div>
+
+      <DataSummary entity="visits" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -442,7 +447,7 @@ export default function VisitsPage() {
               className="sm:w-48"
               selectedKeys={statusFilter !== "all" ? [statusFilter] : []}
               onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("visits.all_status")}</SelectItem>
               <SelectItem key="scheduled">{t("visits.scheduled")}</SelectItem>
               <SelectItem key="in-progress">{t("visits.in_progress")}</SelectItem>
@@ -456,7 +461,7 @@ export default function VisitsPage() {
       {/* Visits Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Visits table">
+          <Table aria-label="Visits table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -466,7 +471,7 @@ export default function VisitsPage() {
               isLoading={loading}
               loadingContent={t("visits.loading_visits")}
               emptyContent={t("visits.no_visits")}
-            >
+           >
               {visits.map((visit) => (
                 <TableRow key={visit.id || visit.visit_id}>
                   {columns.map((column) => (
@@ -480,8 +485,8 @@ export default function VisitsPage() {
           </Table>
 
           {visits.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center p-4">
-              <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} />
+            <div className="flex justify-center border-t border-divider p-3">
+              <Pagination isCompact showControls total={totalPages} page={currentPage} onChange={setCurrentPage} />
             </div>
           )}
         </CardBody>
@@ -507,13 +512,13 @@ export default function VisitsPage() {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("visits.staff_member")}
                   placeholder={t("visits.select_staff")}
                   selectedKeys={formData.staff_id ? [formData.staff_id] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, staff_id: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   {staff.filter(s => s.status === 'active').map((staffMember) => (
                     <SelectItem key={staffMember._id || staffMember.staff_id || ""}>
                       {staffMember.name} ({staffMember.role})
@@ -522,23 +527,23 @@ export default function VisitsPage() {
                   ))}
                 </Select>
 
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t("visits.visit_date")}
                   value={formData.visit_date}
                   onChange={(e) => setFormData({ ...formData, visit_date: e.target.value })}
                   isRequired
-                />
+ />
 
-                <Input
-                  type="time"
+                <TimeField
+                  
                   label={t("visits.visit_time")}
                   value={formData.visit_time}
                   onChange={(e) => setFormData({ ...formData, visit_time: e.target.value })}
                   isRequired
-                />
+ />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   type="number"
                   label={t("visits.cost")}
                   placeholder="0.00"
@@ -547,16 +552,16 @@ export default function VisitsPage() {
                   startContent={<span className="text-default-400">$</span>}
                 />
 
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t("visits.follow_up_date")}
                   value={formData.follow_up_date}
                   onChange={(e) => setFormData({ ...formData, follow_up_date: e.target.value })}
                   className="md:col-span-2"
-                />
+ />
               </div>
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("visits.reason")}
                 placeholder={t("visits.reason_placeholder")}
                 value={formData.reason}
@@ -564,21 +569,21 @@ export default function VisitsPage() {
                 isRequired
               />
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("visits.diagnosis")}
                 placeholder={t("visits.diagnosis_placeholder")}
                 value={formData.diagnosis}
                 onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
               />
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("visits.treatment_plan")}
                 placeholder={t("visits.treatment_plan_placeholder")}
                 value={formData.treatment_plan}
                 onChange={(e) => setFormData({ ...formData, treatment_plan: e.target.value })}
               />
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("visits.notes")}
                 placeholder={t("visits.notes_placeholder")}
                 value={formData.notes}
@@ -587,7 +592,7 @@ export default function VisitsPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
+            <Button variant="light" onPress={onClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={handleSubmit}>
@@ -598,7 +603,7 @@ export default function VisitsPage() {
       </Modal>
 
       {/* View Visit Details Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("visits.visit_details")}</ModalHeader>
           <ModalBody>
@@ -623,8 +628,8 @@ export default function VisitsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("common.status")}</p>
-                    <Chip color={getStatusColor(visitToView.status || "")} size="sm">
-                      {t(`visits.${visitToView.status}`) || visitToView.status}
+                    <Chip variant="flat" color={getStatusColor(visitToView.status || "")} size="sm">
+                      {te(`visits.${visitToView.status}`, visitToView.status)}
                     </Chip>
                   </div>
                   <div>
@@ -679,14 +684,14 @@ export default function VisitsPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("visits.delete_visit")}</ModalHeader>
           <ModalBody>
             <p>{t("visits.delete_confirmation")}</p>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onDeleteClose}>
+            <Button variant="light" onPress={onDeleteClose}>
               {t("common.cancel")}
             </Button>
             <Button color="danger" onPress={confirmDeleteVisit}>

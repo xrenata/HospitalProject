@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { Clock } from "lucide-react";
 import {
   Modal,
   ModalContent,
@@ -106,6 +107,10 @@ const TimeWheelPicker: React.FC<TimeWheelPickerProps> = ({
     <>
       <Input
         label={label}
+        labelPlacement="outside"
+        placeholder=" "
+        variant="bordered"
+        endContent={<Clock className="text-foreground-400" size={16} />}
         value={displayValue}
         onClick={handleOpen}
         readOnly

@@ -2,12 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Card, CardBody, Button, Chip, Input, Select, SelectItem,
-  Pagination, Spinner, Tabs, Tab, Divider
+  Card,
+  CardBody,
+  Button,
+  Input,
+  Select,
+  SelectItem,
+  Pagination,
+  Spinner,
+  Tabs,
+  Tab,
+  Divider
 } from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
+import { relativeTime } from '@/lib/utils';
 import { dashboardAPI } from '@/lib/api';
 import {
   Activity, Calendar, Users, TrendingUp, AlertTriangle,
@@ -22,6 +33,9 @@ interface ActivityItem {
   patient: string;
   description: string;
   time: string;
+  reason?: string;
+  staff?: string;
+  timestamp?: string;
   status: 'completed' | 'pending' | 'urgent' | 'cancelled';
   category?: string;
   staffMember?: string;
@@ -30,7 +44,7 @@ interface ActivityItem {
 
 const ActivityPage = () => {
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const router = useRouter();
   
   // State
@@ -211,14 +225,14 @@ const ActivityPage = () => {
             variant="flat"
             isIconOnly
             onPress={() => router.back()}
-          >
+         >
             <ArrowLeft size={20} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-semibold tracking-tight">
               {t('activity.title')}
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-sm text-foreground-500 mt-1">
               {t('activity.subtitle')}
             </p>
           </div>
@@ -231,8 +245,8 @@ const ActivityPage = () => {
             onPress={handleRefresh}
             isLoading={loading}
             startContent={!loading && <RefreshCw size={16} />}
-          >
-            Refresh
+         >
+            {t('activity.refresh')}
           </Button>
         </div>
       </div>
@@ -244,15 +258,15 @@ const ActivityPage = () => {
           const IconComponent = type.icon;
           
           return (
-            <Card key={type.key} className="hover:shadow-lg transition-shadow">
+            <Card key={type.key}>
               <CardBody className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-${type.color}-100 dark:bg-${type.color}-900/20`}>
-                    <IconComponent className={`text-${type.color}-600 dark:text-${type.color}-400`} size={20} />
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-default-100">
+                    <IconComponent className="text-foreground-500" size={18} />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{count}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{type.label}</p>
+                    <p className="text-2xl font-semibold tabular-nums">{count}</p>
+                    <p className="text-sm text-foreground-500">{type.label}</p>
                   </div>
                 </div>
               </CardBody>
@@ -283,11 +297,11 @@ const ActivityPage = () => {
                   setTypeFilter(key || "all");
                 }}
                 className="sm:max-w-xs"
-              >
+             >
                 <SelectItem key="all">{t('activity.all_types')}</SelectItem>
                 {activityTypes.map((type) => (
                   <SelectItem key={type.key}>{type.label}</SelectItem>
-                ))}
+                )) as any}
               </Select>
               
               <Select
@@ -298,18 +312,18 @@ const ActivityPage = () => {
                   setStatusFilter(key || "all");
                 }}
                 className="sm:max-w-xs"
-              >
+             >
                 <SelectItem key="all">{t('activity.all_status')}</SelectItem>
                 {statusTypes.map((status) => (
                   <SelectItem key={status.key}>{status.label}</SelectItem>
-                ))}
+                )) as any}
               </Select>
               
               <Button
                 variant="flat"
                 onPress={handleClearFilters}
-                className="sm:w-auto"
-              >
+                className="shrink-0 whitespace-nowrap sm:w-auto"
+             >
                 {t('activity.clear_filters')}
               </Button>
             </div>
@@ -346,7 +360,7 @@ const ActivityPage = () => {
                   variant="flat"
                   onPress={handleClearFilters}
                   className="mt-4"
-                >
+               >
                   {t('activity.clear_filters')}
                 </Button>
               )}
@@ -354,7 +368,7 @@ const ActivityPage = () => {
           ) : (
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {activities.map((activity, index) => (
-                <div key={activity.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <div key={activity.id} className="p-6 hover:bg-default-50 transition-colors">
                   <div className="flex items-start gap-4">
                     {/* Timeline indicator */}
                     <div className="relative">
@@ -378,17 +392,17 @@ const ActivityPage = () => {
                               size="sm"
                               color={getStatusColor(activity.status) as any}
                               variant="flat"
-                            >
+                           >
                               {t(`activity.status_types.${activity.status}`)}
                             </Chip>
                           </div>
                           <p className="text-gray-600 dark:text-gray-400 mb-2">
-                            {activity.description}
+                            {activity.reason ? `${activity.reason} · ${activity.staff ?? ''}` : activity.description}
                           </p>
                           <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                             <div className="flex items-center gap-1">
                               <Clock size={14} />
-                              {activity.time}
+                              {activity.timestamp ? relativeTime(activity.timestamp, language) : activity.time}
                             </div>
                             {activity.staffMember && (
                               <div className="flex items-center gap-1">
@@ -403,7 +417,7 @@ const ActivityPage = () => {
                           variant="flat"
                           size="sm"
                           isIconOnly
-                        >
+                       >
                           <Eye size={16} />
                         </Button>
                       </div>

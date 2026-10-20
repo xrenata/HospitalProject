@@ -211,6 +211,9 @@ router.get('/recent-activity', async (req, res) => {
                 type: 'appointment',
                 patient: patientName,
                 description: `${appointment.reason || 'General consultation'} with Dr. ${staffName}`,
+                reason: appointment.reason || '',
+                staff: staffName,
+                timestamp: appointment.createdAt,
                 time: timeAgo,
                 status: status
             };
@@ -626,6 +629,226 @@ router.get('/tests', async (req, res) => {
     } catch (error) {
         console.error('Error fetching tests:', error);
         res.status(500).json({ error: 'Failed to fetch tests' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/dashboard/trends:
+ *   get:
+ *     summary: Get dashboard chart data
+ *     description: Daily series for new patients, appointments and revenue over the last N days, the change versus the previous N days, plus appointment status, room status and staff role breakdowns.
+ *     tags:
+ *       - Dashboard
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           default: 14
+ *         description: Number of days in the series (2-90)
+ *     responses:
+ *       200:
+ *         description: Chart data retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/trends', async (req, res) => {
+    try {
+        const days = Math.min(90, Math.max(2, parseInt(req.query.days, 10) || 14));
+
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        const start = new Date(end);
+        start.setDate(start.getDate() - days + 1);
+        start.setHours(0, 0, 0, 0);
+        const prevStart = new Date(start);
+        prevStart.setDate(prevStart.getDate() - days);
+
+        const dayKey = (d) => {
+            const x = new Date(d);
+            return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+        };
+        const labels = [];
+        for (let i = 0; i < days; i++) {
+            const d = new Date(start);
+            d.setDate(start.getDate() + i);
+            labels.push(dayKey(d));
+        }
+        const index = Object.fromEntries(labels.map((k, i) => [k, i]));
+
+        const bucket = (docs, dateField, valueFn = () => 1) => {
+            const current = new Array(days).fill(0);
+            let previous = 0;
+            for (const doc of docs) {
+                const value = valueFn(doc);
+                const date = new Date(doc[dateField]);
+                if (date >= start) {
+                    const i = index[dayKey(date)];
+                    if (i !== undefined) current[i] += value;
+                } else {
+                    previous += value;
+                }
+            }
+            return { series: current, total: current.reduce((a, b) => a + b, 0), previous };
+        };
+
+        const [patients, appointments, treatments, rooms, staffRoles, statusCounts] = await Promise.all([
+            Patient.find({ createdAt: { $gte: prevStart, $lte: end } }).select('createdAt').lean(),
+            Appointment.find({ appointmentDate: { $gte: prevStart, $lte: end } }).select('appointmentDate status').lean(),
+            Treatment.find({ startDate: { $gte: prevStart, $lte: end } }).select('startDate cost').lean(),
+            Room.find().select('status').lean(),
+            Staff.aggregate([{ $group: { _id: '$role', count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
+            Appointment.aggregate([
+                { $match: { appointmentDate: { $gte: start, $lte: end } } },
+                { $group: { _id: '$status', count: { $sum: 1 } } }
+            ])
+        ]);
+
+        const roomStatus = { available: 0, occupied: 0, maintenance: 0, reserved: 0 };
+        for (const room of rooms) {
+            if (roomStatus[room.status] !== undefined) roomStatus[room.status] += 1;
+        }
+
+        const appointmentStatus = { scheduled: 0, completed: 0, cancelled: 0, 'no-show': 0 };
+        for (const row of statusCounts) {
+            if (appointmentStatus[row._id] !== undefined) appointmentStatus[row._id] = row.count;
+        }
+
+        res.json({
+            days,
+            labels,
+            patients: bucket(patients, 'createdAt'),
+            appointments: bucket(appointments, 'appointmentDate'),
+            revenue: bucket(treatments, 'startDate', (t) => t.cost || 0),
+            appointmentStatus,
+            rooms: { total: rooms.length, ...roomStatus },
+            staffByRole: staffRoles.map((r) => ({ role: r._id || 'Other', count: r.count }))
+        });
+    } catch (error) {
+        console.error('Error fetching dashboard trends:', error);
+        res.status(500).json({ error: 'Failed to fetch dashboard trends' });
+    }
+});
+
+// Entities the list pages can ask a summary for: model, date field(s) for the trend, fields to break down by.
+// Several collections store both camelCase and snake_case variants, so a field can be a list of fallbacks.
+const SUMMARY_ENTITIES = () => {
+    const models = require('../Modules/Database/models');
+    const extra = require('../Modules/Database/modules');
+    return {
+        patients: { model: models.Patient, date: ['createdAt'], groups: ['gender', 'bloodType'] },
+        appointments: { model: models.Appointment, date: ['appointmentDate'], groups: ['status'] },
+        staff: { model: models.Staff, date: ['created_at', 'hire_date'], groups: ['status', 'role'] },
+        departments: { model: models.Department, date: ['createdAt', 'created_at'], groups: ['status'] },
+        rooms: { model: models.Room, date: ['createdAt'], groups: ['status', 'roomType'] },
+        treatments: { model: models.Treatment, date: ['startDate'], groups: ['status'] },
+        equipment: { model: models.Equipment, date: ['createdAt'], groups: ['status'] },
+        medications: { model: models.Medication, date: ['createdAt'], groups: ['category'] },
+        tests: { model: models.Test, date: ['testDate', 'test_date', 'createdAt'], groups: ['status', 'priority'] },
+        surgeries: { model: models.Surgery, date: ['surgeryDate', 'surgery_date', 'createdAt'], groups: ['status', 'priority'] },
+        visits: { model: models.Visit, date: ['visitDate', 'visit_date', 'createdAt'], groups: ['status'] },
+        prescriptions: { model: models.Prescription, date: ['prescriptionDate', 'prescription_date', 'startDate', 'createdAt'], groups: ['status'] },
+        complaints: { model: models.Complaint, date: ['createdAt', 'created_at'], groups: ['status', 'priority', 'complaintType'] },
+        insurance: { model: models.Insurance, date: ['createdAt', 'created_at'], groups: ['status', 'coverageType'] },
+        shifts: { model: models.Shift, date: ['shiftDate', 'shift_date', 'createdAt'], groups: ['status', 'shiftType'] },
+        feedback: { model: models.Feedback, date: ['createdAt', 'created_at'], groups: ['rating', 'feedbackType', 'status'] },
+        billing: { model: extra.Invoice, date: ['issueDate', 'createdAt'], groups: ['status', 'paymentMethod'] },
+        blood_bank: { model: extra.BloodUnit, date: ['collectedDate', 'createdAt'], groups: ['bloodType', 'status', 'component'] },
+        maintenance: { model: extra.MaintenanceRequest, date: ['createdAt'], groups: ['status', 'priority'] },
+        incidents: { model: extra.Incident, date: ['occurredAt', 'createdAt'], groups: ['status', 'severity', 'incidentType'] },
+        ambulances: { model: extra.Ambulance, date: ['createdAt'], groups: ['status', 'vehicleType'] }
+    };
+};
+
+/**
+ * @swagger
+ * /api/dashboard/summary/{entity}:
+ *   get:
+ *     summary: Get list-page summary
+ *     description: Total count, a 14-day trend with the previous period and breakdowns by status-like fields for one entity (patients, appointments, staff, ...).
+ *     tags:
+ *       - Dashboard
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: entity
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Summary retrieved successfully
+ *       404:
+ *         description: Unknown entity
+ */
+router.get('/summary/:entity', async (req, res) => {
+    try {
+        const config = SUMMARY_ENTITIES()[req.params.entity];
+        if (!config) return res.status(404).json({ error: 'Unknown entity' });
+        if (!require('../Modules/Functions/access').can(req.access, `${req.params.entity}.view`)) {
+            return res.status(403).json({ message: 'Insufficient permissions', required: `${req.params.entity}.view` });
+        }
+
+        const days = 14;
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        const start = new Date(end);
+        start.setDate(start.getDate() - days + 1);
+        start.setHours(0, 0, 0, 0);
+        const prevStart = new Date(start);
+        prevStart.setDate(prevStart.getDate() - days);
+
+        const chain = (fields) => fields.slice(1).reduce((acc, f) => ({ $ifNull: [acc, `$${f}`] }), `$${fields[0]}`);
+        const facet = {
+            total: [{ $count: 'n' }],
+            daily: [
+                { $match: { __d: { $gte: start, $lte: end } } },
+                { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$__d' } }, n: { $sum: 1 } } }
+            ],
+            previous: [{ $match: { __d: { $gte: prevStart, $lt: start } } }, { $count: 'n' }]
+        };
+        for (const field of config.groups) {
+            facet[`g_${field}`] = [
+                { $group: { _id: `$${field}`, n: { $sum: 1 } } },
+                { $sort: { n: -1 } },
+                { $limit: 6 }
+            ];
+        }
+
+        const [result] = await config.model.aggregate([
+            { $addFields: { __d: { $convert: { input: chain(config.date), to: 'date', onError: null, onNull: null } } } },
+            { $facet: facet }
+        ]);
+
+        const series = new Array(days).fill(0);
+        for (const row of result.daily) {
+            const i = Math.round((new Date(`${row._id}T12:00:00`).setHours(0, 0, 0, 0) - start.getTime()) / 86400000);
+            if (i >= 0 && i < days) series[i] += row.n;
+        }
+
+        const groups = {};
+        for (const field of config.groups) {
+            groups[field] = result[`g_${field}`]
+                .filter((r) => r._id !== null && r._id !== undefined && r._id !== '')
+                .map((r) => ({ value: String(r._id), count: r.n }));
+        }
+
+        res.json({
+            total: result.total[0]?.n || 0,
+            series,
+            recent: series.reduce((a, b) => a + b, 0),
+            previous: result.previous[0]?.n || 0,
+            groups
+        });
+    } catch (error) {
+        console.error('Error fetching summary:', error);
+        res.status(500).json({ error: 'Failed to fetch summary' });
     }
 });
 

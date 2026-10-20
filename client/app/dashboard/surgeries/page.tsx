@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -22,8 +21,9 @@ import {
   useDisclosure,
   Select,
   SelectItem,
-  Textarea,
-} from "@heroui/react";
+  Textarea
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { Scissors, Search, Trash2, Edit, Plus, Eye, Clock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -34,9 +34,12 @@ import { formatDate, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 import PatientAutocomplete from "@/components/PatientAutocomplete";
 
+import DataSummary from "@/components/DataSummary";
+import DateField from '@/components/DateField';
+import TimeField from '@/components/TimeField';
 export default function SurgeriesPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
+  const { user, can, canWrite } = useAuth();
+  const { t, te } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [surgeries, setSurgeries] = useState<Surgery[]>([]);
@@ -194,7 +197,7 @@ export default function SurgeriesPage() {
   };
 
   const handleAddSurgery = () => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('surgeries')) {
       toast.error(t("surgeries.insufficient_permissions"));
       return;
     }
@@ -219,7 +222,7 @@ export default function SurgeriesPage() {
   };
 
   const handleEditSurgery = (surgery: Surgery) => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('surgeries')) {
       toast.error(t("surgeries.insufficient_permissions"));
       return;
     }
@@ -255,7 +258,7 @@ export default function SurgeriesPage() {
   };
 
   const handleDeleteSurgery = (surgery: Surgery) => {
-    if (getPermissionLevel(user) < 3) {
+    if (!can('surgeries.delete')) {
       toast.error(t("surgeries.insufficient_permissions_delete"));
       return;
     }
@@ -342,7 +345,7 @@ export default function SurgeriesPage() {
   };
 
   const handleStatusChange = async (surgeryId: string, newStatus: string) => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('surgeries')) {
       toast.error(t("surgeries.insufficient_permissions"));
       return;
     }
@@ -412,8 +415,8 @@ export default function SurgeriesPage() {
         );
       case "status":
         return (
-          <Chip color={getStatusColor(surgery.status || "")} size="sm">
-            {t(`surgeries.${surgery.status}`) || surgery.status || "scheduled"}
+          <Chip variant="flat" color={getStatusColor(surgery.status || "")} size="sm">
+            {te(`surgeries.${surgery.status}`, surgery.status || "scheduled")}
           </Chip>
         );
       case "cost":
@@ -422,12 +425,12 @@ export default function SurgeriesPage() {
         const surgeryId = surgery.surgery_id || surgery._id || surgery.id?.toString() || "";
         return (
           <div className="flex gap-2 items-center">
-            <Button size="sm" color="secondary" variant="flat" onPress={() => handleViewSurgery(surgery)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleViewSurgery(surgery)}>
               <Eye size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('surgeries') && (
               <>
-                <Button size="sm" color="primary" variant="flat" onPress={() => handleEditSurgery(surgery)}>
+                <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditSurgery(surgery)}>
                   <Edit size={16} />
                 </Button>
                 <Select
@@ -441,14 +444,14 @@ export default function SurgeriesPage() {
                       handleStatusChange(surgeryId, newStatus);
                     }
                   }}
-                >
+               >
                   <SelectItem key="scheduled">{t("surgeries.scheduled")}</SelectItem>
                   <SelectItem key="in-progress">{t("surgeries.in_progress")}</SelectItem>
                   <SelectItem key="completed">{t("surgeries.completed")}</SelectItem>
                   <SelectItem key="cancelled">{t("surgeries.cancelled")}</SelectItem>
                 </Select>
-                {getPermissionLevel(user) >= 3 && (
-                  <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteSurgery(surgery)}>
+                {can('surgeries.delete') && (
+                  <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeleteSurgery(surgery)}>
                     <Trash2 size={16} />
                   </Button>
                 )}
@@ -490,20 +493,22 @@ export default function SurgeriesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("surgeries.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("surgeries.subtitle")}
           </p>
         </div>
-        {getPermissionLevel(user) >= 2 && (
+        {canWrite('surgeries') && (
           <Button color="primary" onPress={handleAddSurgery}>
             <Plus className="mr-2" size={20} />
             {t("surgeries.add_surgery")}
           </Button>
         )}
       </div>
+
+      <DataSummary entity="surgeries" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -522,7 +527,7 @@ export default function SurgeriesPage() {
               className="sm:w-48"
               selectedKeys={statusFilter !== "all" ? [statusFilter] : []}
               onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("surgeries.all_status")}</SelectItem>
               <SelectItem key="scheduled">{t("surgeries.scheduled")}</SelectItem>
               <SelectItem key="in-progress">{t("surgeries.in_progress")}</SelectItem>
@@ -536,7 +541,7 @@ export default function SurgeriesPage() {
       {/* Surgeries Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Surgeries table">
+          <Table aria-label="Surgeries table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -546,7 +551,7 @@ export default function SurgeriesPage() {
               isLoading={loading}
               loadingContent={t("surgeries.loading_surgeries")}
               emptyContent={t("surgeries.no_surgeries")}
-            >
+           >
               {surgeries.map((surgery) => (
                 <TableRow key={surgery.id || surgery.surgery_id}>
                   {columns.map((column) => (
@@ -560,8 +565,8 @@ export default function SurgeriesPage() {
           </Table>
 
           {surgeries.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center p-4">
-              <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} />
+            <div className="flex justify-center border-t border-divider p-3">
+              <Pagination isCompact showControls total={totalPages} page={currentPage} onChange={setCurrentPage} />
             </div>
           )}
         </CardBody>
@@ -587,13 +592,13 @@ export default function SurgeriesPage() {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("surgeries.surgeon")}
                   placeholder={t("surgeries.select_surgeon")}
                   selectedKeys={formData.primary_surgeon_id ? [formData.primary_surgeon_id] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, primary_surgeon_id: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   {getSurgeons().map((surgeon) => (
                     <SelectItem key={surgeon._id || surgeon.staff_id || ""}>
                       {surgeon.name}
@@ -602,35 +607,35 @@ export default function SurgeriesPage() {
                   ))}
                 </Select>
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("surgeries.surgery_type")}
                   placeholder={t("surgeries.select_surgery_type")}
                   selectedKeys={formData.surgery_type ? [formData.surgery_type] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, surgery_type: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   {surgeryTypes.map((type) => (
                     <SelectItem key={type}>{type}</SelectItem>
                   ))}
                 </Select>
 
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t("surgeries.scheduled_date")}
                   value={formData.scheduled_date}
                   onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })}
                   isRequired
-                />
+ />
 
-                <Input
-                  type="time"
+                <TimeField
+                  
                   label={t("surgeries.scheduled_time")}
                   value={formData.scheduled_time}
                   onChange={(e) => setFormData({ ...formData, scheduled_time: e.target.value })}
                   isRequired
-                />
+ />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   type="number"
                   label={t("surgeries.duration_minutes")}
                   placeholder="120"
@@ -639,13 +644,13 @@ export default function SurgeriesPage() {
                   min="0"
                 />
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("surgeries.operation_room")}
                   placeholder={t("surgeries.select_room")}
                   selectedKeys={formData.room_id ? [formData.room_id] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, room_id: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   {getOperationRooms().map((room) => (
                     <SelectItem key={room.room_id || room._id || ""}>
                       {room.room_number} - {room.room_type}
@@ -654,7 +659,7 @@ export default function SurgeriesPage() {
                   ))}
                 </Select>
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   type="number"
                   label={t("surgeries.cost")}
                   placeholder="0.00"
@@ -667,7 +672,7 @@ export default function SurgeriesPage() {
                 />
               </div>
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("surgeries.pre_op_notes")}
                 placeholder={t("surgeries.pre_op_notes_placeholder")}
                 value={formData.pre_op_notes}
@@ -676,14 +681,14 @@ export default function SurgeriesPage() {
 
               {!isAddMode && (
                 <>
-                  <Textarea
+                  <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                     label={t("surgeries.post_op_notes")}
                     placeholder={t("surgeries.post_op_notes_placeholder")}
                     value={formData.post_op_notes}
                     onChange={(e) => setFormData({ ...formData, post_op_notes: e.target.value })}
                   />
 
-                  <Textarea
+                  <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                     label={t("surgeries.complications")}
                     placeholder={t("surgeries.complications_placeholder")}
                     value={formData.complications}
@@ -694,7 +699,7 @@ export default function SurgeriesPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
+            <Button variant="light" onPress={onClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={handleSubmit}>
@@ -705,7 +710,7 @@ export default function SurgeriesPage() {
       </Modal>
 
       {/* View Surgery Details Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("surgeries.surgery_details")}</ModalHeader>
           <ModalBody>
@@ -726,8 +731,8 @@ export default function SurgeriesPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("common.status")}</p>
-                    <Chip color={getStatusColor(surgeryToView.status || "")} size="sm">
-                      {t(`surgeries.${surgeryToView.status}`) || surgeryToView.status}
+                    <Chip variant="flat" color={getStatusColor(surgeryToView.status || "")} size="sm">
+                      {te(`surgeries.${surgeryToView.status}`, surgeryToView.status)}
                     </Chip>
                   </div>
                   <div>
@@ -784,14 +789,14 @@ export default function SurgeriesPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("surgeries.delete_surgery")}</ModalHeader>
           <ModalBody>
             <p>{t("surgeries.delete_confirmation")}</p>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onDeleteClose}>
+            <Button variant="light" onPress={onDeleteClose}>
               {t("common.cancel")}
             </Button>
             <Button color="danger" onPress={confirmDeleteSurgery}>

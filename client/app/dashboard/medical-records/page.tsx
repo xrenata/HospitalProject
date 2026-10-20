@@ -2,11 +2,30 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Card, CardBody, Button, Input, Table, TableHeader, TableColumn, 
-  TableBody, TableRow, TableCell, Chip, Pagination, Modal, ModalContent, 
-  ModalHeader, ModalBody, ModalFooter, useDisclosure, Select, SelectItem,
-  Textarea, Tabs, Tab
+  Card,
+  CardBody,
+  Button,
+  Input,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Pagination,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+  Select,
+  SelectItem,
+  Textarea,
+  Tabs,
+  Tab
 } from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { DatePicker } from '@heroui/date-picker';
 import { parseDate, CalendarDate } from '@internationalized/date';
 import { FileText, DollarSign, Trash2, Clock, CheckCircle, Search, Edit } from 'lucide-react';
@@ -16,8 +35,14 @@ import { treatmentsAPI, patientsAPI, staffAPI, medicationsAPI } from '@/lib/api'
 import { Treatment, Patient, Staff, Medication } from '@/types';
 import { formatDate, getPermissionLevel, formatCurrency, toDateString } from '@/lib/utils';
 
+import DataSummary from "@/components/DataSummary";
+import { useConfirm } from '@/components/ConfirmDialog';
+import toast from 'react-hot-toast';
+import { useI18n } from '@/contexts/I18nContext';
 export default function MedicalRecordsPage() {
-  const { user } = useAuth();
+  const { t } = useI18n();
+  const confirmAction = useConfirm();
+  const { user, can, canWrite } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [treatments, setTreatments] = useState<Treatment[]>([]);
@@ -410,30 +435,30 @@ export default function MedicalRecordsPage() {
       
       if (isAddMode) {
         await treatmentsAPI.create(submitData);
-        alert('Treatment record created successfully!');
+        toast.success(t('records.created'));
       } else {
         await treatmentsAPI.update(selectedTreatment!.treatment_id || selectedTreatment!.id?.toString() || '', submitData);
-        alert('Treatment record updated successfully!');
+        toast.success(t('records.updated'));
       }
       onClose();
       loadTreatments();
     } catch (error: any) {
       console.error('Failed to save treatment:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
-      alert(`Failed to save treatment record: ${errorMessage}`);
+      const errorMessage = error.response?.data?.error || error.message || t('records.unknown_error');
+      toast.error(`Failed to save treatment record: ${errorMessage}`);
     }
   };
 
   const handleDeleteTreatment = async (treatmentId: string) => {
-    if (confirm('Are you sure you want to delete this treatment record?')) {
+    if (await confirmAction(t('records.delete_confirm'))) {
       try {
         await treatmentsAPI.delete(treatmentId);
-        alert('Treatment record deleted successfully!');
+        toast.success(t('records.deleted'));
         loadTreatments();
       } catch (error: any) {
         console.error('Failed to delete treatment:', error);
-        const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
-        alert(`Failed to delete treatment record: ${errorMessage}`);
+        const errorMessage = error.response?.data?.error || error.message || t('records.unknown_error');
+        toast.error(`Failed to delete treatment record: ${errorMessage}`);
       }
     }
   };
@@ -489,7 +514,7 @@ export default function MedicalRecordsPage() {
         return (
           <div>
             <p className="font-medium">{treatment.diagnosis}</p>
-            <Chip color={getTreatmentTypeColor((treatment as any).treatmentType || treatment.treatment_type || '')} size="sm">
+            <Chip variant="flat" color={getTreatmentTypeColor((treatment as any).treatmentType || treatment.treatment_type || '')} size="sm">
               {(treatment as any).treatmentType || treatment.treatment_type}
             </Chip>
           </div>
@@ -515,18 +540,18 @@ export default function MedicalRecordsPage() {
         return treatment.cost ? formatCurrency(treatment.cost) : 'N/A';
       case 'status':
         return (
-          <Chip color={getStatusColor(treatment.status || 'ongoing')} size="sm">
+          <Chip variant="flat" color={getStatusColor(treatment.status || 'ongoing')} size="sm">
             {treatment.status || 'ongoing'}
           </Chip>
         );
       case 'actions':
         return (
           <div className="flex gap-2">
-            <Button size="sm" color="primary" variant="flat" onPress={() => handleEditTreatment(treatment)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditTreatment(treatment)}>
               <Edit size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
-              <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteTreatment(treatment.treatment_id || (treatment as any)._id || treatment.id?.toString() || 'unknown')}>
+            {canWrite('treatments') && (
+              <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeleteTreatment(treatment.treatment_id || (treatment as any)._id || treatment.id?.toString() || 'unknown')}>
                 <Trash2 size={16} />
               </Button>
             )}
@@ -538,14 +563,14 @@ export default function MedicalRecordsPage() {
   };
 
   const columns = [
-    { key: 'patient', label: 'Patient' },
-    { key: 'staff', label: 'Treating Physician' },
-    { key: 'treatment_info', label: 'Diagnosis & Type' },
-    { key: 'description', label: 'Description' },
-    { key: 'duration', label: 'Duration' },
-    { key: 'cost', label: 'Cost' },
-    { key: 'status', label: 'Status' },
-    { key: 'actions', label: 'Actions' }
+    { key: 'patient', label: t('records.patient') },
+    { key: 'staff', label: t('records.physician') },
+    { key: 'treatment_info', label: t('records.diagnosis_type') },
+    { key: 'description', label: t('records.description') },
+    { key: 'duration', label: t('records.duration') },
+    { key: 'cost', label: t('records.cost') },
+    { key: 'status', label: t('records.status') },
+    { key: 'actions', label: t('records.actions') }
   ];
 
   // Calculate statistics
@@ -559,91 +584,61 @@ export default function MedicalRecordsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Medical Records & Treatments
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {t('records.title')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Manage patient treatment records and medical history
+          <p className="text-sm text-foreground-500 mt-1">
+            {t('records.subtitle')}
           </p>
         </div>
-        {getPermissionLevel(user) >= 2 && (
+        {canWrite('treatments') && (
           <Button color="primary" onPress={handleAddTreatment}>
             <FileText className="mr-2" size={20} />
-            Add Treatment Record
+            {t('records.add')}
           </Button>
         )}
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardBody className="p-6 text-center">
-            <div className="text-2xl mb-2"><FileText size={32} /></div>
-            <h3 className="text-lg font-semibold">Total Treatments</h3>
-            <p className="text-2xl font-bold text-blue-600">{totalTreatments}</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="p-6 text-center">
-            <div className="text-2xl mb-2"><Clock size={32} /></div>
-            <h3 className="text-lg font-semibold">Ongoing</h3>
-            <p className="text-2xl font-bold text-yellow-600">{ongoingTreatments}</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="p-6 text-center">
-            <div className="text-2xl mb-2"><CheckCircle size={32} /></div>
-            <h3 className="text-lg font-semibold">Completed</h3>
-            <p className="text-2xl font-bold text-green-600">{completedTreatments}</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="p-6 text-center">
-            <div className="text-2xl mb-2"><DollarSign size={32} /></div>
-            <h3 className="text-lg font-semibold">Total Cost</h3>
-            <p className="text-2xl font-bold text-purple-600">{formatCurrency(totalCost)}</p>
-          </CardBody>
-        </Card>
-      </div>
+      <DataSummary entity="treatments" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
         <CardBody className="p-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Input
-              placeholder="Search treatments by diagnosis, type, or description..."
+              placeholder={t('records.search_placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="sm:col-span-1"
               startContent={<Search size={16} />}
             />
             <Select
-              placeholder="Filter by status"
+              placeholder={t('records.filter_status')}
               selectedKeys={statusFilter !== 'all' ? [statusFilter] : []}
               onSelectionChange={(keys) => {
                 const selectedKey = Array.from(keys)[0] as string;
                 setStatusFilter(selectedKey || 'all');
               }}
-            >
-              <SelectItem key="all">All Status</SelectItem>
-              <SelectItem key="ongoing">Ongoing</SelectItem>
-              <SelectItem key="completed">Completed</SelectItem>
-              <SelectItem key="cancelled">Cancelled</SelectItem>
+           >
+              <SelectItem key="all">{t('records.all_status')}</SelectItem>
+              <SelectItem key="ongoing">{t('records.ongoing')}</SelectItem>
+              <SelectItem key="completed">{t('records.completed')}</SelectItem>
+              <SelectItem key="cancelled">{t('records.cancelled')}</SelectItem>
             </Select>
                           <Select
-                placeholder="Filter by patient"
+                placeholder={t('records.filter_patient')}
                 selectedKeys={patientFilter !== 'all' ? [patientFilter] : []}
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
                   setPatientFilter(selectedKey || 'all');
                 }}
-              >
-                <SelectItem key="all">All Patients</SelectItem>
+             >
+                <SelectItem key="all">{t('records.all_patients')}</SelectItem>
                 {patients.map((patient) => (
                   <SelectItem key={patient.patient_id || (patient as any)._id}>
                     {patient.name || `${(patient as any).firstName} ${(patient as any).lastName}`}
                   </SelectItem>
-                ))}
+                )) as any}
               </Select>
           </div>
         </CardBody>
@@ -652,7 +647,7 @@ export default function MedicalRecordsPage() {
       {/* Treatments Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Treatments table">
+          <Table aria-label="Treatments table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -687,20 +682,20 @@ export default function MedicalRecordsPage() {
       <Modal isOpen={isOpen} onClose={onClose} size="3xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>
-            {isAddMode ? 'Add New Treatment Record' : 'Edit Treatment Record'}
+            {isAddMode ? t('records.add_title') : t('records.edit_title')}
           </ModalHeader>
           <ModalBody>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select
-                label="Patient"
-                placeholder="Select a patient"
+              <Select labelPlacement="outside" variant="bordered"
+                label={t('records.patient')}
+                placeholder={t('records.select_patient')}
                 selectedKeys={formData.patient_id ? [formData.patient_id] : []}
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
                   setFormData({...formData, patient_id: selectedKey});
                 }}
                 isRequired
-              >
+             >
                 {patients.map((patient) => (
                   <SelectItem key={patient.patient_id || (patient as any)._id}>
                     {patient.name || `${(patient as any).firstName} ${(patient as any).lastName}`}
@@ -708,16 +703,16 @@ export default function MedicalRecordsPage() {
                 ))}
               </Select>
               
-              <Select
-                label="Treating Physician"
-                placeholder="Select a physician"
+              <Select labelPlacement="outside" variant="bordered"
+                label={t('records.physician')}
+                placeholder={t('records.select_physician')}
                 selectedKeys={formData.staff_id ? [formData.staff_id] : []}
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
                   setFormData({...formData, staff_id: selectedKey});
                 }}
                 isRequired
-              >
+             >
                 {staff.filter(s => s.role === 'Doctor' || s.role === 'doctor').map((staffMember) => (
                   <SelectItem key={staffMember.staff_id || (staffMember as any)._id}>
                     {staffMember.name} - {staffMember.specialization || 'General'}
@@ -725,42 +720,42 @@ export default function MedicalRecordsPage() {
                 ))}
               </Select>
               
-              <Input
-                label="Treatment Type"
+              <Input labelPlacement="outside" variant="bordered"
+                label={t('records.treatment_type')}
                 value={formData.treatment_type}
                 onChange={(e) => setFormData({...formData, treatment_type: e.target.value})}
-                placeholder="e.g., Medication, Surgery, Physical Therapy"
+                placeholder={t('records.type_placeholder')}
                 isRequired
               />
               
-              <Input
-                label="Diagnosis"
+              <Input labelPlacement="outside" variant="bordered"
+                label={t('records.diagnosis')}
                 value={formData.diagnosis}
                 onChange={(e) => setFormData({...formData, diagnosis: e.target.value})}
-                placeholder="Primary diagnosis"
+                placeholder={t('records.diagnosis_placeholder')}
                 isRequired
               />
               
               <div className="md:col-span-2">
-                <Textarea
-                  label="Treatment Description"
+                <Textarea minRows={3} labelPlacement="outside" variant="bordered"
+                  label={t('records.treatment_description')}
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Detailed description of the treatment"
+                  placeholder={t('records.description_placeholder')}
                   rows={3}
                   isRequired
                 />
               </div>
               
-              <Input
-                label="Medication/Prescription"
+              <Input labelPlacement="outside" variant="bordered"
+                label={t('records.medication')}
                 value={formData.medication}
                 onChange={(e) => setFormData({...formData, medication: e.target.value})}
-                placeholder="Prescribed medications and dosage"
+                placeholder={t('records.medication_placeholder')}
               />
               
-              <Input
-                label="Cost"
+              <Input labelPlacement="outside" variant="bordered"
+                label={t('records.cost')}
                 type="number"
                 value={formData.cost}
                 onChange={(e) => {
@@ -772,48 +767,48 @@ export default function MedicalRecordsPage() {
                 placeholder="0.00"
               />
               
-              <DatePicker
-                label="Start Date"
+              <DatePicker labelPlacement="outside" variant="bordered"
+                label={t('records.start_date')}
                 value={formData.start_date ? parseDate(toDateString(formData.start_date) || '') : null}
                 onChange={(value: any) => {
                   const dateString = value ? value.toString() : '';
                   setFormData({...formData, start_date: dateString});
                 }}
                 isRequired
-                description="Treatment start date"
+                description={t('records.start_hint')}
                 className="w-full"
               />
               
-              <DatePicker
-                label="End Date"
+              <DatePicker labelPlacement="outside" variant="bordered"
+                label={t('records.end_date')}
                 value={formData.end_date ? parseDate(toDateString(formData.end_date) || '') : null}
                 onChange={(value: any) => {
                   const dateString = value ? value.toString() : '';
                   setFormData({...formData, end_date: dateString});
                 }}
-                description="Treatment end date (optional)"
+                description={t('records.end_hint')}
                 className="w-full"
               />
               
-              <Select
-                label="Status"
+              <Select placeholder=" " labelPlacement="outside" variant="bordered"
+                label={t('records.status')}
                 selectedKeys={[formData.status]}
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
                   setFormData({...formData, status: selectedKey as 'ongoing' | 'completed' | 'cancelled'});
                 }}
-              >
-                <SelectItem key="ongoing">Ongoing</SelectItem>
-                <SelectItem key="completed">Completed</SelectItem>
-                <SelectItem key="cancelled">Cancelled</SelectItem>
+             >
+                <SelectItem key="ongoing">{t('records.ongoing')}</SelectItem>
+                <SelectItem key="completed">{t('records.completed')}</SelectItem>
+                <SelectItem key="cancelled">{t('records.cancelled')}</SelectItem>
               </Select>
               
               <div className="md:col-span-2">
-                <Textarea
-                  label="Notes"
+                <Textarea minRows={3} labelPlacement="outside" variant="bordered"
+                  label={t('records.notes')}
                   value={formData.notes}
                   onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                  placeholder="Additional notes about the treatment"
+                  placeholder={t('records.notes_placeholder')}
                   rows={2}
                 />
               </div>
@@ -824,7 +819,7 @@ export default function MedicalRecordsPage() {
               Cancel
             </Button>
             <Button color="primary" onPress={handleSubmit}>
-              {isAddMode ? 'Create Treatment Record' : 'Update Treatment Record'}
+              {isAddMode ? t('records.create') : t('records.update')}
             </Button>
           </ModalFooter>
         </ModalContent>

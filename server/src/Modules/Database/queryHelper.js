@@ -3,9 +3,7 @@ const { mongoose } = require('./db');
 // Helper functions for MongoDB operations with better error handling and logging
 const executeQuery = async (operation, description = '') => {
     try {
-        console.log('Executing MongoDB operation:', description);
         const result = await operation();
-        console.log('Operation successful:', description);
         return { success: true, data: result };
     } catch (error) {
         console.error('MongoDB operation error:', error);
@@ -32,7 +30,9 @@ const getPaginatedResults = async (Model, filter = {}, options = {}) => {
                 page: parseInt(page),
                 limit: parseInt(limit),
                 total,
-                pages: Math.ceil(total / limit)
+                pages: Math.ceil(total / limit),
+                totalPages: Math.ceil(total / limit),
+                totalItems: total
             }
         };
     } catch (error) {

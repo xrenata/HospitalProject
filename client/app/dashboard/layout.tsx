@@ -1,14 +1,24 @@
 "use client";
 
+import HospitalSwitcher from '@/components/HospitalSwitcher';
 import React, { useState, useEffect } from 'react';
 import {
-  Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem,
-  Avatar, Badge, Chip, Input, Kbd, Link
+  Button,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Avatar,
+  Kbd,
+  Tooltip
 } from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import NextLink from 'next/link';
 import CommandPalette from '@/components/CommandPalette';
+import NoAccess from '@/components/NoAccess';
+import { roleName } from '@/lib/roles';
 
 import {
   Building2, Users, Calendar, Check, Stethoscope,
@@ -16,7 +26,14 @@ import {
   Home, FileText, Package, Sun, Moon, Monitor, User, LogOut,
   ClipboardList, Pill, Heart, UserCheck, Shield, Clock,
   MessageSquare, Star, Clipboard, Zap, Briefcase,
-  Scissors, Navigation, BarChart3, Database, TestTube
+  Scissors, Navigation, BarChart3, Database, TestTube,
+  PanelLeftClose, PanelLeftOpen, ChevronsUpDown, Menu, ShieldCheck,
+  Wrench,
+  Siren,
+  Droplets,
+  AlertOctagon,
+  Receipt,
+  Landmark,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useI18n } from '@/contexts/I18nContext';
@@ -30,7 +47,7 @@ interface MenuItem {
   icon: React.ReactNode;
   label: string;
   href: string;
-  requiredPermission?: number;
+  resource?: string;
   badge?: number;
   category?: string;
 }
@@ -40,12 +57,15 @@ interface MenuCategory {
   items: MenuItem[];
 }
 
+const RESOURCE_BY_PATH: Record<string, string> = {"/dashboard/patients": "patients", "/dashboard/appointments": "appointments", "/dashboard/visits": "visits", "/dashboard/medical-records": "treatments", "/dashboard/tests": "tests", "/dashboard/treatments": "treatments", "/dashboard/prescriptions": "prescriptions", "/dashboard/surgeries": "surgeries", "/dashboard/staff": "staff", "/dashboard/departments": "departments", "/dashboard/rooms": "rooms", "/dashboard/shifts": "shifts", "/dashboard/surgery-teams": "surgery_teams", "/dashboard/medications": "medications", "/dashboard/equipment": "equipment", "/dashboard/inventory": "medications", "/dashboard/alerts": "notifications", "/dashboard/complaints": "complaints", "/dashboard/feedback": "feedback", "/dashboard/insurance": "insurance", "/dashboard/hospital": "hospital", "/dashboard/analytics": "analytics", "/dashboard/reports": "reports", "/dashboard/roles": "roles", "/dashboard/hospitals": "hospital", "/dashboard/billing": "billing", "/dashboard/blood-bank": "blood_bank", "/dashboard/maintenance": "maintenance", "/dashboard/incidents": "incidents", "/dashboard/ambulances": "ambulances"};
+
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [alertCount, setAlertCount] = useState(0);
-  const { user, logout } = useAuth();
+  const { user, logout, can, loading: authLoading } = useAuth();
   const { t, language, setLanguage, languages } = useI18n();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
@@ -53,65 +73,94 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const menuCategories: MenuCategory[] = [
     {
-      name: "Overview",
+      name: t('navigation.group_overview'),
       items: [
-        { icon: <Home size={20} />, label: t('navigation.dashboard') || 'Dashboard', href: '/dashboard' },
+        { icon: <Home size={18} />, label: t('navigation.dashboard'), href: '/dashboard' },
       ]
     },
     {
-      name: "Patient Care",
+      name: t('navigation.group_patient_care'),
       items: [
-        { icon: <Users size={20} />, label: t('navigation.patients') || 'Patients', href: '/dashboard/patients', requiredPermission: 1 },
-        { icon: <Calendar size={20} />, label: t('navigation.appointments') || 'Appointments', href: '/dashboard/appointments', requiredPermission: 1 },
-        { icon: <ClipboardList size={20} />, label: 'Visits', href: '/dashboard/visits', requiredPermission: 1 },
-        { icon: <FileText size={20} />, label: t('navigation.medical_records') || 'Medical Records', href: '/dashboard/medical-records', requiredPermission: 1 },
+        { icon: <Users size={18} />, label: t('navigation.patients'), href: '/dashboard/patients', resource: 'patients' },
+        { icon: <Calendar size={18} />, label: t('navigation.appointments'), href: '/dashboard/appointments', resource: 'appointments' },
+        { icon: <ClipboardList size={18} />, label: t('navigation.visits'), href: '/dashboard/visits', resource: 'visits' },
+        { icon: <FileText size={18} />, label: t('navigation.medical_records'), href: '/dashboard/medical-records', resource: 'treatments' },
       ]
     },
     {
-      name: "Medical Operations",
+      name: t('navigation.group_medical'),
       items: [
-        { icon: <TestTube size={20} />, label: t('navigation.tests') || 'Tests & Labs', href: '/dashboard/tests', requiredPermission: 1 },
-        { icon: <Heart size={20} />, label: 'Treatments', href: '/dashboard/treatments', requiredPermission: 1 },
-        { icon: <Pill size={20} />, label: 'Prescriptions', href: '/dashboard/prescriptions', requiredPermission: 1 },
-        { icon: <Scissors size={20} />, label: 'Surgeries', href: '/dashboard/surgeries', requiredPermission: 2 },
+        { icon: <TestTube size={18} />, label: t('navigation.tests'), href: '/dashboard/tests', resource: 'tests' },
+        { icon: <Heart size={18} />, label: t('navigation.treatments'), href: '/dashboard/treatments', resource: 'treatments' },
+        { icon: <Pill size={18} />, label: t('navigation.prescriptions'), href: '/dashboard/prescriptions', resource: 'prescriptions' },
+        { icon: <Scissors size={18} />, label: t('navigation.surgeries'), href: '/dashboard/surgeries', resource: 'surgeries' },
       ]
     },
     {
-      name: "Hospital Management",
+      name: t('navigation.group_hospital'),
       items: [
-        { icon: <Stethoscope size={20} />, label: t('navigation.staff') || 'Staff', href: '/dashboard/staff', requiredPermission: 3 },
-        { icon: <Building2 size={20} />, label: t('navigation.departments') || 'Departments', href: '/dashboard/departments', requiredPermission: 2 },
-        { icon: <Bed size={20} />, label: t('navigation.rooms') || 'Rooms', href: '/dashboard/rooms', requiredPermission: 2 },
-        { icon: <Clock size={20} />, label: 'Shifts', href: '/dashboard/shifts', requiredPermission: 2 },
-        { icon: <UserCheck size={20} />, label: 'Surgery Teams', href: '/dashboard/surgery-teams', requiredPermission: 2 },
+        { icon: <Stethoscope size={18} />, label: t('navigation.staff'), href: '/dashboard/staff', resource: 'staff' },
+        { icon: <Building2 size={18} />, label: t('navigation.departments'), href: '/dashboard/departments', resource: 'departments' },
+        { icon: <Bed size={18} />, label: t('navigation.rooms'), href: '/dashboard/rooms', resource: 'rooms' },
+        { icon: <Clock size={18} />, label: t('navigation.shifts'), href: '/dashboard/shifts', resource: 'shifts' },
+        { icon: <UserCheck size={18} />, label: t('navigation.surgery_teams'), href: '/dashboard/surgery-teams', resource: 'surgery_teams' },
+        { icon: <Wrench size={18} />, label: t('navigation.maintenance'), href: '/dashboard/maintenance', resource: 'maintenance' },
+        { icon: <Siren size={18} />, label: t('navigation.ambulances'), href: '/dashboard/ambulances', resource: 'ambulances' },
       ]
     },
     {
-      name: "Inventory",
+      name: t('navigation.group_inventory'),
       items: [
-        { icon: <Package size={20} />, label: 'Medications', href: '/dashboard/medications', requiredPermission: 2 },
-        { icon: <Zap size={20} />, label: 'Equipment', href: '/dashboard/equipment', requiredPermission: 2 },
+        { icon: <Package size={18} />, label: t('navigation.medications'), href: '/dashboard/medications', resource: 'medications' },
+        { icon: <Zap size={18} />, label: t('navigation.equipment'), href: '/dashboard/equipment', resource: 'equipment' },
+        { icon: <Droplets size={18} />, label: t('navigation.blood_bank'), href: '/dashboard/blood-bank', resource: 'blood_bank' },
       ]
     },
     {
-      name: "Communication",
+      name: t('navigation.group_communication'),
       items: [
-        { icon: <Bell size={20} />, label: t('navigation.alerts') || 'Notifications', href: '/dashboard/alerts', requiredPermission: 1, badge: alertCount > 0 ? alertCount : undefined },
-        { icon: <MessageSquare size={20} />, label: 'Complaints', href: '/dashboard/complaints', requiredPermission: 1 },
-        { icon: <Star size={20} />, label: 'Feedback', href: '/dashboard/feedback', requiredPermission: 1 },
+        { icon: <Bell size={18} />, label: t('navigation.alerts'), href: '/dashboard/alerts', resource: 'notifications', badge: alertCount > 0 ? alertCount : undefined },
+        { icon: <MessageSquare size={18} />, label: t('navigation.complaints'), href: '/dashboard/complaints', resource: 'complaints' },
+        { icon: <Star size={18} />, label: t('navigation.feedback'), href: '/dashboard/feedback', resource: 'feedback' },
+        { icon: <AlertOctagon size={18} />, label: t('navigation.incidents'), href: '/dashboard/incidents', resource: 'incidents' },
       ]
     },
     {
-      name: "Administration",
+      name: t('navigation.group_admin'),
       items: [
-        { icon: <Shield size={20} />, label: 'Insurance', href: '/dashboard/insurance', requiredPermission: 2 },
-        { icon: <Building2 size={20} />, label: 'Hospital Info', href: '/dashboard/hospital', requiredPermission: 3 },
-        { icon: <BarChart3 size={20} />, label: 'Analytics', href: '/dashboard/analytics', requiredPermission: 2 },
-        { icon: <Database size={20} />, label: 'Reports', href: '/dashboard/reports', requiredPermission: 2 },
-        { icon: <Settings size={20} />, label: t('navigation.settings') || 'Settings', href: '/dashboard/settings', requiredPermission: 1 },
+        { icon: <Shield size={18} />, label: t('navigation.insurance'), href: '/dashboard/insurance', resource: 'insurance' },
+        { icon: <Receipt size={18} />, label: t('navigation.billing'), href: '/dashboard/billing', resource: 'billing' },
+        { icon: <Building2 size={18} />, label: t('navigation.hospital_info'), href: '/dashboard/hospital', resource: 'hospital' },
+        { icon: <Landmark size={18} />, label: t('navigation.hospitals'), href: '/dashboard/hospitals', resource: 'hospital' },
+        { icon: <BarChart3 size={18} />, label: t('navigation.analytics'), href: '/dashboard/analytics', resource: 'analytics' },
+        { icon: <Database size={18} />, label: t('navigation.reports'), href: '/dashboard/reports', resource: 'reports' },
+        { icon: <ShieldCheck size={18} />, label: t('navigation.roles'), href: '/dashboard/roles', resource: 'roles' },
+        { icon: <Settings size={18} />, label: t('navigation.settings'), href: '/dashboard/settings' },
       ]
     }
   ];
+
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem('sidebar-collapsed') === '1');
+    } catch {}
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      try {
+        localStorage.setItem('sidebar-collapsed', prev ? '0' : '1');
+      } catch {}
+      return !prev;
+    });
+  };
+
+  // The page behind the current URL needs "<resource>.view"; without it show a friendly explanation instead.
+  const requiredResource = Object.entries(RESOURCE_BY_PATH).find(([path]) => pathname === path || pathname?.startsWith(path + '/'))?.[1];
+  const blocked = !!user && !!requiredResource && !can(`${requiredResource}.view`);
+
+  const isActiveRoute = (href: string) =>
+    href === '/dashboard' ? pathname === href : pathname === href || pathname?.startsWith(href + '/');
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -156,6 +205,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         e.preventDefault();
         setCommandPaletteOpen(true);
       }
+      // Ctrl+B or Cmd+B to collapse / expand the sidebar
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        toggleCollapsed();
+      }
       // Escape to close command palette
       if (e.key === 'Escape' && commandPaletteOpen) {
         setCommandPaletteOpen(false);
@@ -166,23 +220,35 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [commandPaletteOpen]);
 
+  useEffect(() => {
+    if (!authLoading && !user) router.replace('/login');
+  }, [authLoading, user, router]);
+
   const handleLogout = () => {
     logout();
     router.push('/');
   };
 
-  const hasPermission = (requiredLevel?: number) => {
-    if (!requiredLevel || !user) return true;
-    return user.permLevel >= requiredLevel;
+  const hasPermission = (resource?: string) => {
+    if (!resource) return true;
+    return can(`${resource}.view`);
   };
 
   const filteredMenuCategories = menuCategories.map(category => ({
     ...category,
-    items: category.items.filter(item => hasPermission(item.requiredPermission))
+    items: category.items.filter(item => hasPermission(item.resource))
   })).filter(category => category.items.length > 0);
+
+  // the browser tab names the current page, so several open tabs can be told apart
+  const currentLabel = filteredMenuCategories.flatMap((c) => c.items).find((i) => isActiveRoute(i.href))?.label;
+
+  useEffect(() => {
+    document.title = currentLabel ? `${currentLabel} · ${t('login.eyebrow')}` : t('login.eyebrow');
+  }, [currentLabel, t]);
 
   const getUserRole = () => {
     if (!user) return t('user.guest');
+    if (user.accessRole) return roleName(t, user.accessRole as any);
     switch (user.permLevel) {
       case 3: return t('user.admin');
       case 2: return t('user.doctor');
@@ -215,162 +281,143 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       <div className="flex h-screen">
-        {/* Enhanced Sidebar with Navbar Features */}
-        <aside className={`
-          fixed inset-y-0 left-0 z-40 w-80 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          ${isMobile ? 'top-16' : 'top-0'}
-          bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/95
-          border-r border-divider shadow-lg lg:shadow-none
-        `}>
-          <nav className="flex h-full flex-col overflow-hidden">
-            {/* Enhanced Sidebar Header with Branding */}
-            <div className="p-6 border-b border-divider bg-gradient-to-r from-primary/5 to-primary/10">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-2.5 bg-primary/20 rounded-xl shadow-sm">
-                  <Building2 className="text-primary" size={28} />
-                </div>
-                <div>
-                  <h1 className="font-bold text-lg text-foreground">MedCare</h1>
-                  <p className="text-xs text-muted-foreground">Hospital Management</p>
-                </div>
+        {/* Sidebar */}
+        <aside
+          className={`
+            fixed inset-y-0 left-0 z-40 w-72 shrink-0 border-r border-divider bg-content1
+            transition-[transform,width] duration-200 ease-out lg:static lg:translate-x-0
+            ${collapsed ? 'lg:w-[68px]' : 'lg:w-64'}
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          `}
+       >
+          <nav className="flex h-full flex-col">
+            {/* Brand */}
+            <div className={`flex h-14 shrink-0 items-center gap-2.5 px-4 ${collapsed ? 'lg:justify-center lg:px-0' : ''}`}>
+              <span
+                aria-hidden
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-foreground text-background"
+             >
+                <svg fill="none" height="15" viewBox="0 0 16 16" width="15">
+                  <path d="M8 2v12M2 8h12" stroke="currentColor" strokeLinecap="round" strokeWidth="2.25" />
+                </svg>
+              </span>
+              <div className={`flex min-w-0 flex-1 ${collapsed ? 'lg:hidden' : ''}`}>
+                <HospitalSwitcher fallback={t('login.eyebrow')} />
               </div>
-              
-              {/* Search Bar */}
-              <div className="relative">
-                <Input
-                  placeholder="Search patients, appointments..."
-                  startContent={<Search className="text-muted-foreground" size={18} />}
-                  endContent={
-                    <Kbd className="hidden sm:inline-block" keys={["command"]}>
-                      K
-                    </Kbd>
-                  }
-                  classNames={{
-                    inputWrapper: "bg-background/50 border-divider hover:bg-background/80 transition-colors cursor-pointer",
-                    input: "text-sm cursor-pointer"
-                  }}
-                  size="sm"
-                  readOnly
+            </div>
+
+            {/* Search */}
+            <div className={`px-3 pb-2 ${collapsed ? 'lg:px-[14px]' : ''}`}>
+              <Tooltip content={t('sidebar.search') || 'Search'} placement="right" isDisabled={!collapsed}>
+                <button
+                  type="button"
                   onClick={() => setCommandPaletteOpen(true)}
-                />
-              </div>
+                  className={`flex h-9 w-full items-center gap-2 rounded-lg border border-divider px-2.5 text-sm text-foreground-500 transition-colors hover:bg-default-100 ${
+                    collapsed ? 'lg:justify-center lg:px-0' : ''
+                  }`}
+               >
+                  <Search size={16} className="shrink-0" />
+                  <span className={`flex-1 truncate text-left ${collapsed ? 'lg:hidden' : ''}`}>
+                    {t('sidebar.search') || 'Search'}
+                  </span>
+                  <Kbd className={`hidden text-[10px] ${collapsed ? '' : 'lg:inline-flex'}`} keys={['command']}>
+                    K
+                  </Kbd>
+                </button>
+              </Tooltip>
             </div>
 
+            {/* Navigation */}
+            <div className="flex-1 overflow-y-auto px-3 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {filteredMenuCategories.map((category, categoryIndex) => (
+                <div key={category.name} className={categoryIndex === 0 ? 'mt-1' : 'mt-5'}>
+                  <h3
+                    className={`px-2.5 pb-1.5 text-[11px] font-medium uppercase tracking-wider text-foreground-400 ${
+                      collapsed ? 'lg:hidden' : ''
+                    }`}
+                 >
+                    {category.name}
+                  </h3>
+                  {collapsed && categoryIndex > 0 && <div className="mx-2 mb-2 hidden border-t border-divider lg:block" />}
+                  <ul className="space-y-0.5">
+                    {category.items.map((item) => {
+                      const isActive = isActiveRoute(item.href);
 
-
-            {/* Navigation Items */}
-            <div className="flex-1 overflow-y-auto px-4 py-4" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-              <style jsx>{`
-                div::-webkit-scrollbar {
-                  display: none;
-                }
-              `}</style>
-              <div className="space-y-6">
-                {filteredMenuCategories.map((category, categoryIndex) => (
-                  <div key={category.name} className="space-y-2">
-                    {/* Category Header */}
-                    <div className="px-3 py-2">
-                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        {category.name}
-                      </h3>
-                    </div>
-                    
-                    {/* Category Items */}
-                    <div className="space-y-1">
-                      {category.items.map((item, index) => {
-                        const isActive = pathname === item.href;
-                        return (
-                          <NextLink
-                            key={item.href}
-                            href={item.href}
-                            onClick={() => isMobile && setSidebarOpen(false)}
-                            className={`
-                              group relative flex items-center space-x-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors duration-200 ease-in-out
-                              ${isActive
-                                ? 'bg-gradient-to-r from-primary/20 to-primary/10 text-primary border border-primary/20 shadow-sm'
-                                : 'text-muted-foreground hover:bg-accent/50 hover:text-accent-foreground'
-                              }
-                            `}
-                          >
-                            {/* Active indicator */}
-                            {isActive && (
-                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-lg" />
-                            )}
-                            
-                            {/* Icon */}
-                            <div className={`
-                              flex-shrink-0 transition-colors duration-200 ease-out
-                              ${isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-accent-foreground'}
-                            `}>
-                              {item.icon}
-                            </div>
-                            
-                            {/* Label */}
-                            <span className="flex-1 truncate transition-colors duration-200">
-                              {item.label}
-                            </span>
-                            
-                            {/* Badge */}
-                            {item.badge && (
-                              <Chip 
-                                size="sm" 
-                                color="danger" 
-                                className="ml-auto animate-pulse-slow"
-                                variant="flat"
-                              >
-                                {item.badge}
-                              </Chip>
-                            )}
-                          </NextLink>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      return (
+                        <li key={item.href}>
+                          <Tooltip content={item.label} placement="right" isDisabled={!collapsed}>
+                            <NextLink
+                              href={item.href}
+                              aria-current={isActive ? 'page' : undefined}
+                              onClick={() => isMobile && setSidebarOpen(false)}
+                              className={`
+                                relative flex h-9 items-center gap-3 rounded-lg px-2.5 text-sm transition-colors
+                                ${collapsed ? 'lg:justify-center lg:px-0' : ''}
+                                ${isActive
+                                  ? 'bg-default-100 font-medium text-foreground'
+                                  : 'text-foreground-500 hover:bg-default-100 hover:text-foreground'}
+                              `}
+                           >
+                              <span className={`shrink-0 ${isActive ? 'text-primary' : ''}`}>{item.icon}</span>
+                              <span className={`flex-1 truncate ${collapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
+                              {item.badge && (
+                                <Chip
+                                  size="sm"
+                                  color="danger"
+                                  variant="flat"
+                                  className={`h-5 min-w-5 px-1 text-[11px] ${collapsed ? 'lg:hidden' : ''}`}
+                               >
+                                  {item.badge}
+                                </Chip>
+                              )}
+                              {item.badge && collapsed && (
+                                <span className="absolute right-2 top-1.5 hidden h-2 w-2 rounded-full bg-danger lg:block" />
+                              )}
+                            </NextLink>
+                          </Tooltip>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
             </div>
-            
-            {/* User Profile Section at Bottom */}
-            <div className="p-4 border-t border-divider">
+
+            {/* Footer: collapse + user */}
+            <div className="shrink-0 border-t border-divider p-3">
+              <button
+                type="button"
+                onClick={toggleCollapsed}
+                className={`mb-2 hidden h-8 w-full items-center gap-3 rounded-lg px-2.5 text-xs text-foreground-400 transition-colors hover:bg-default-100 hover:text-foreground lg:flex ${
+                  collapsed ? 'justify-center px-0' : ''
+                }`}
+             >
+                {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+                {!collapsed && <span>{t('sidebar.collapse') || 'Collapse'}</span>}
+              </button>
+
               <Dropdown placement="top-start">
                 <DropdownTrigger>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start p-3 h-auto hover:bg-accent/50 transition-colors group"
-                  >
-                    <div className="flex items-center space-x-3 w-full">
-                      <Avatar
-                        name={user?.username}
-                        size="sm"
-                        className="ring-2 ring-primary/20"
-                      />
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-                          {user?.username}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {getUserRole()}
-                        </p>
-                      </div>
+                  <button
+                    type="button"
+                    className={`flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left transition-colors hover:bg-default-100 ${
+                      collapsed ? 'lg:justify-center' : ''
+                    }`}
+                 >
+                    <Avatar name={user?.username} size="sm" className="h-8 w-8 shrink-0 text-xs" />
+                    <div className={`min-w-0 flex-1 ${collapsed ? 'lg:hidden' : ''}`}>
+                      <p className="truncate text-sm font-medium leading-tight">{user?.username}</p>
+                      <p className="truncate text-xs text-foreground-400">{getUserRole()}</p>
                     </div>
-                  </Button>
+                    <ChevronsUpDown size={14} className={`shrink-0 text-foreground-400 ${collapsed ? 'lg:hidden' : ''}`} />
+                  </button>
                 </DropdownTrigger>
                 <DropdownMenu aria-label="User menu">
-                  <DropdownItem key="profile" isReadOnly isDisabled className="opacity-100">
-                    <div className="flex items-center space-x-2">
-                      <User className="h-4 w-4" />
-                      <div className="flex flex-col">
-                        <p className="text-sm font-medium">{user?.username}</p>
-                        <p className="text-xs text-muted-foreground">{getUserRole()}</p>
-                      </div>
-                    </div>
-                  </DropdownItem>
                   <DropdownItem key="theme" onPress={cycleTheme}>
                     <div className="flex items-center space-x-2">
                       {getThemeIcon()}
                       <span>
-                        {theme === 'light' ? t('theme.light') : 
+                        {theme === 'light' ? t('theme.light') :
                          theme === 'dark' ? t('theme.dark') : t('theme.system')}
                       </span>
                     </div>
@@ -393,61 +440,37 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </nav>
         </aside>
 
-        {/* Mobile overlay with enhanced animation */}
+        {/* Mobile overlay */}
         {isMobile && (
           <div
-            className={`
-              fixed inset-0 z-30 transition-all duration-300 ease-in-out lg:hidden
-              ${sidebarOpen 
-                ? 'bg-black/60 backdrop-blur-sm opacity-100 visible' 
-                : 'bg-black/0 backdrop-blur-0 opacity-0 invisible'
-              }
-            `}
+            className={`fixed inset-0 z-30 bg-black/40 transition-opacity duration-200 lg:hidden ${
+              sidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+            }`}
             onClick={() => setSidebarOpen(false)}
-            style={{
-              WebkitBackdropFilter: sidebarOpen ? 'blur(4px)' : 'blur(0px)',
-              backdropFilter: sidebarOpen ? 'blur(4px)' : 'blur(0px)',
-            }}
           />
         )}
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">
-          {/* Mobile hamburger menu - positioned fixed in top left */}
+          {/* Mobile menu button */}
           {isMobile && (
             <Button
               isIconOnly
-              variant="ghost"
-              className="fixed top-4 left-4 z-50 lg:hidden bg-background/80 backdrop-blur-sm shadow-md"
-              onPress={() => setSidebarOpen(!sidebarOpen)}
-            >
-              <div className="relative w-6 h-6 flex items-center justify-center">
-                <div className="flex flex-col space-y-1.5 transition-all duration-300 ease-in-out">
-                  <span 
-                    className={`
-                      block w-5 h-0.5 bg-current transition-all duration-300 ease-in-out origin-center
-                      ${sidebarOpen ? 'rotate-45 translate-y-2' : 'rotate-0 translate-y-0'}
-                    `} 
-                  />
-                  <span 
-                    className={`
-                      block w-5 h-0.5 bg-current transition-all duration-300 ease-in-out
-                      ${sidebarOpen ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}
-                    `} 
-                  />
-                  <span 
-                    className={`
-                      block w-5 h-0.5 bg-current transition-all duration-300 ease-in-out origin-center
-                      ${sidebarOpen ? '-rotate-45 -translate-y-2' : 'rotate-0 translate-y-0'}
-                    `} 
-                  />
-                </div>
-              </div>
+              aria-label="Menu"
+              variant="flat"
+              size="sm"
+              className="fixed left-3 top-3 z-20 border border-divider bg-content1 lg:hidden"
+              onPress={() => setSidebarOpen(true)}
+           >
+              <Menu size={18} />
             </Button>
           )}
-          
+
           <div className="container mx-auto p-4 sm:p-6">
-            {children}
+            <React.Suspense fallback={null}>
+              {/* nothing is rendered (so nothing is fetched) until we know who is signed in and what they may open */}
+              {authLoading || !user ? null : blocked ? <NoAccess permission={`${requiredResource}.view`} roleName={roleName(t, user.accessRole as any)} /> : children}
+            </React.Suspense>
           </div>
         </main>
       </div>

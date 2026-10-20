@@ -33,8 +33,9 @@ import { Patient } from "@/types";
 import { formatDate, getPermissionLevel, toDateString } from "@/lib/utils";
 import toast from "react-hot-toast";
 
+import DataSummary from "@/components/DataSummary";
 export default function PatientsPage() {
-  const { user } = useAuth();
+  const { user, can, canWrite } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -421,7 +422,7 @@ export default function PatientsPage() {
         await patientsAPI.create(cleanedData);
         toast.success(t("patients.patient_added"));
       } else {
-        await patientsAPI.update(selectedPatient!.patient_id, cleanedData);
+        await patientsAPI.update(selectedPatient!.patient_id ?? '', cleanedData);
         toast.success(t("patients.patient_updated"));
       }
       onClose();
@@ -432,9 +433,15 @@ export default function PatientsPage() {
     }
   };
 
+  // opening a patient takes you to their full file; the quick-look dialog below stays as a fallback
   const handleViewPatient = (patient: Patient) => {
-    setPatientToView(patient);
-    onViewOpen();
+    const id = patient.patient_id || (patient as any)._id;
+
+    if (id) router.push(`/dashboard/patients/${id}`);
+    else {
+      setPatientToView(patient);
+      onViewOpen();
+    }
   };
 
   const handleDeletePatient = (patient: Patient) => {
@@ -467,14 +474,18 @@ export default function PatientsPage() {
         const fullName = `${firstName} ${lastName}`.trim();
         const tcNumber = patient.tc_number?.trim() || "";
         return (
-          <div>
+          <button
+            className="text-left transition-colors hover:text-primary"
+            type="button"
+            onClick={() => handleViewPatient(patient)}
+          >
             <p className="font-medium">
               {fullName || t("patients.not_specified")}
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-foreground-500">
               TC: {tcNumber || t("patients.not_specified")}
             </p>
-          </div>
+          </button>
         );
       case "contact":
         const phone = patient.phone?.trim();
@@ -486,7 +497,7 @@ export default function PatientsPage() {
                 <a
                   href={`tel:${phone}`}
                   className="text-blue-600 hover:text-blue-800"
-                >
+               >
                   {phone}
                 </a>
               ) : (
@@ -498,7 +509,7 @@ export default function PatientsPage() {
                 <a
                   href={`mailto:${email}`}
                   className="text-blue-600 hover:text-blue-800"
-                >
+               >
                   {email}
                 </a>
               ) : (
@@ -582,30 +593,30 @@ export default function PatientsPage() {
       case "actions":
         return (
           <div className="flex gap-2">
-            <Button
+            <Button isIconOnly
               size="sm"
               color="secondary"
-              variant="flat"
+              variant="light"
               onPress={() => handleViewPatient(patient)}
-            >
+           >
               <Eye size={16} />
             </Button>
-            <Button
+            <Button isIconOnly
               size="sm"
               color="primary"
-              variant="flat"
+              variant="light"
               onPress={() => handleEditPatient(patient)}
-            >
+           >
               <Edit size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 &&
+            {canWrite('patients') &&
               (patient.patient_id || patient.id) && (
-                <Button
+                <Button isIconOnly
                   size="sm"
                   color="danger"
-                  variant="flat"
+                  variant="light"
                   onPress={() => handleDeletePatient(patient)}
-                >
+               >
                   <Trash2 size={16} />
                 </Button>
               )}
@@ -629,10 +640,10 @@ export default function PatientsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("patients.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("patients.subtitle")}
           </p>
         </div>
@@ -641,6 +652,8 @@ export default function PatientsPage() {
           {t("patients.add_patient")}
         </Button>
       </div>
+
+      <DataSummary entity="patients" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -661,7 +674,7 @@ export default function PatientsPage() {
                 variant="flat"
                 onPress={() => setShowFilters(!showFilters)}
                 color={showFilters ? "primary" : "default"}
-              >
+             >
                 <ChevronDown
                   className={`mr-2 transition-transform ${showFilters ? "rotate-180" : ""}`}
                   size={16}
@@ -673,7 +686,7 @@ export default function PatientsPage() {
                 color="warning"
                 onPress={resetFilters}
                 isDisabled={!searchTerm && !hasActiveFilters}
-              >
+             >
                 {t("patients.reset_filters")}
               </Button>
             </div>
@@ -696,7 +709,7 @@ export default function PatientsPage() {
                     }));
                   }}
                   size="sm"
-                >
+               >
                   <SelectItem key="Male">{t("patients.male")}</SelectItem>
                   <SelectItem key="Female">{t("patients.female")}</SelectItem>
                   <SelectItem key="Other">{t("patients.other")}</SelectItem>
@@ -715,7 +728,7 @@ export default function PatientsPage() {
                     }));
                   }}
                   size="sm"
-                >
+               >
                   <SelectItem key="A+">A+</SelectItem>
                   <SelectItem key="A-">A-</SelectItem>
                   <SelectItem key="B+">B+</SelectItem>
@@ -775,7 +788,7 @@ export default function PatientsPage() {
                     }));
                   }}
                   size="sm"
-                >
+               >
                   <SelectItem key="yes">
                     {t("patients.has_allergies")}
                   </SelectItem>
@@ -797,7 +810,7 @@ export default function PatientsPage() {
                     }));
                   }}
                   size="sm"
-                >
+               >
                   <SelectItem key="yes">
                     {t("patients.has_insurance")}
                   </SelectItem>
@@ -817,9 +830,9 @@ export default function PatientsPage() {
                     }));
                   }}
                   size="sm"
-                >
+               >
                   {availableCities.map((city) => (
-                    <SelectItem key={city} value={city}>
+                    <SelectItem key={city}>
                       {city}
                     </SelectItem>
                   ))}
@@ -834,7 +847,7 @@ export default function PatientsPage() {
                     setFilters((prev) => ({ ...prev, sortBy: selectedKey }));
                   }}
                   size="sm"
-                >
+               >
                   <SelectItem key="name">{t("patients.name")}</SelectItem>
                   <SelectItem key="age">{t("patients.age")}</SelectItem>
                   <SelectItem key="created">
@@ -852,7 +865,7 @@ export default function PatientsPage() {
                     setFilters((prev) => ({ ...prev, sortOrder: selectedKey }));
                   }}
                   size="sm"
-                >
+               >
                   <SelectItem key="asc">{t("patients.ascending")}</SelectItem>
                   <SelectItem key="desc">{t("patients.descending")}</SelectItem>
                 </Select>
@@ -868,8 +881,8 @@ export default function PatientsPage() {
                   )
                     return null;
 
-                  let displayValue = value;
-                  if (key === "ageRange" && (value.min || value.max)) {
+                  let displayValue: string = typeof value === "string" ? value : "";
+                  if (key === "ageRange" && typeof value === "object" && (value.min || value.max)) {
                     displayValue = `${value.min || "0"}-${value.max || "∞"} ${t("patients.years_old")}`;
                   } else if (key === "hasAllergies") {
                     displayValue =
@@ -889,7 +902,7 @@ export default function PatientsPage() {
                     <div
                       key={key}
                       className="bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-sm flex items-center gap-2"
-                    >
+                   >
                       <span className="capitalize">
                         {key.replace(/([A-Z])/g, " $1").trim()}: {displayValue}
                       </span>
@@ -905,7 +918,7 @@ export default function PatientsPage() {
                           }
                         }}
                         className="text-primary-600 hover:text-primary-800"
-                      >
+                     >
                         ×
                       </button>
                     </div>
@@ -942,7 +955,7 @@ export default function PatientsPage() {
       {/* Patients Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Patients table">
+          <Table aria-label="Patients table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -956,7 +969,7 @@ export default function PatientsPage() {
                   ? t("patients.no_patients_search")
                   : t("patients.no_patients")
               }
-            >
+           >
               {filteredPatients.map((patient) => (
                 <TableRow key={patient.patient_id || patient.id}>
                   {columns.map((column) => (
@@ -987,14 +1000,14 @@ export default function PatientsPage() {
         onClose={onClose}
         size="2xl"
         scrollBehavior="inside"
-      >
+     >
         <ModalContent>
           <ModalHeader>
             {isAddMode ? t("patients.add_patient") : t("patients.edit_patient")}
           </ModalHeader>
           <ModalBody>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("patients.first_name")}
                 placeholder={t("patients.enter_first_name")}
                 value={formData.first_name}
@@ -1008,7 +1021,7 @@ export default function PatientsPage() {
                     : ""
                 }
               />
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("patients.last_name")}
                 placeholder={t("patients.enter_last_name")}
                 value={formData.last_name}
@@ -1022,7 +1035,7 @@ export default function PatientsPage() {
                     : ""
                 }
               />
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("patients.tc_number")}
                 placeholder={t("patients.enter_tc_number")}
                 value={formData.tc_number}
@@ -1043,7 +1056,7 @@ export default function PatientsPage() {
                       : ""
                 }
               />
-              <DatePicker
+              <DatePicker labelPlacement="outside" variant="bordered"
                 label={t("patients.date_of_birth")}
                 value={
                   formData.date_of_birth
@@ -1060,7 +1073,7 @@ export default function PatientsPage() {
                 maxValue={parseDate(new Date().toISOString().split("T")[0])}
                 showMonthAndYearPickers
               />
-              <Select
+              <Select labelPlacement="outside" variant="bordered"
                 label={t("patients.gender")}
                 placeholder={t("patients.select_gender")}
                 selectedKeys={formData.gender ? [formData.gender] : []}
@@ -1068,12 +1081,12 @@ export default function PatientsPage() {
                   const selectedKey = Array.from(keys)[0] as string;
                   setFormData({ ...formData, gender: selectedKey });
                 }}
-              >
+             >
                 <SelectItem key="Male">{t("patients.male")}</SelectItem>
                 <SelectItem key="Female">{t("patients.female")}</SelectItem>
                 <SelectItem key="Other">{t("patients.other")}</SelectItem>
               </Select>
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("patients.phone")}
                 type="tel"
                 value={formData.phone}
@@ -1085,7 +1098,7 @@ export default function PatientsPage() {
                 isRequired
                 placeholder={t("patients.enter_phone")}
               />
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("patients.email")}
                 type="email"
                 placeholder={t("patients.enter_email")}
@@ -1094,7 +1107,7 @@ export default function PatientsPage() {
                   setFormData({ ...formData, email: e.target.value })
                 }
               />
-              <Select
+              <Select labelPlacement="outside" variant="bordered"
                 label={t("patients.blood_type")}
                 placeholder={t("patients.select_blood_type")}
                 selectedKeys={formData.blood_type ? [formData.blood_type] : []}
@@ -1102,7 +1115,7 @@ export default function PatientsPage() {
                   const selectedKey = Array.from(keys)[0] as string;
                   setFormData({ ...formData, blood_type: selectedKey });
                 }}
-              >
+             >
                 <SelectItem key="A+">A+</SelectItem>
                 <SelectItem key="A-">A-</SelectItem>
                 <SelectItem key="B+">B+</SelectItem>
@@ -1112,7 +1125,7 @@ export default function PatientsPage() {
                 <SelectItem key="O+">O+</SelectItem>
                 <SelectItem key="O-">O-</SelectItem>
               </Select>
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("patients.insurance_info")}
                 placeholder={t("patients.enter_insurance")}
                 value={formData.insurance_info}
@@ -1120,7 +1133,7 @@ export default function PatientsPage() {
                   setFormData({ ...formData, insurance_info: e.target.value })
                 }
               />
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("patients.emergency_contact_name")}
                 placeholder={t("patients.enter_emergency_contact")}
                 value={formData.emergency_contact_name}
@@ -1132,7 +1145,7 @@ export default function PatientsPage() {
                 }
                 className="md:col-span-1"
               />
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("patients.emergency_contact_phone")}
                 type="tel"
                 placeholder={t("patients.enter_emergency_phone")}
@@ -1144,7 +1157,7 @@ export default function PatientsPage() {
                 }}
                 className="md:col-span-1"
               />
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("patients.address")}
                 placeholder={t("patients.enter_address")}
                 value={formData.address}
@@ -1174,7 +1187,7 @@ export default function PatientsPage() {
         onClose={onViewClose}
         size="2xl"
         scrollBehavior="inside"
-      >
+     >
         <ModalContent>
           <ModalHeader>
             {t("patients.patient_details")} - {patientToView?.first_name}{" "}
@@ -1261,7 +1274,7 @@ export default function PatientsPage() {
                           <a
                             href={`tel:${patientToView.phone}`}
                             className="text-blue-600 hover:text-blue-800"
-                          >
+                         >
                             {patientToView.phone}
                           </a>
                         ) : (
@@ -1278,7 +1291,7 @@ export default function PatientsPage() {
                           <a
                             href={`mailto:${patientToView.email}`}
                             className="text-blue-600 hover:text-blue-800"
-                          >
+                         >
                             {patientToView.email}
                           </a>
                         ) : (
@@ -1321,7 +1334,7 @@ export default function PatientsPage() {
                           <a
                             href={`tel:${patientToView.emergency_contact_phone}`}
                             className="text-blue-600 hover:text-blue-800"
-                          >
+                         >
                             {patientToView.emergency_contact_phone}
                           </a>
                         ) : (
@@ -1390,18 +1403,29 @@ export default function PatientsPage() {
             )}
           </ModalBody>
           <ModalFooter>
-            <Button color="primary" onPress={onViewClose}>
+            <Button variant="light" onPress={onViewClose}>
               {t("common.close")}
             </Button>
             <Button
-              color="secondary"
+              color="primary"
+              onPress={() => {
+                const id = patientToView?.patient_id || (patientToView as any)?._id;
+
+                onViewClose();
+                if (id) router.push(`/dashboard/patients/${id}`);
+              }}
+            >
+              {t("patient_detail.open_profile")}
+            </Button>
+            <Button
+              variant="flat"
               onPress={() => {
                 onViewClose();
                 if (patientToView) {
                   handleEditPatient(patientToView);
                 }
               }}
-            >
+           >
               <Edit size={16} className="mr-2" />
               {t("patients.edit_patient")}
             </Button>
@@ -1410,7 +1434,7 @@ export default function PatientsPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader className="text-danger">
             {t("patients.delete_patient")}

@@ -2,11 +2,33 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Card, CardBody, Button, Input, Table, TableHeader, TableColumn, 
-  TableBody, TableRow, TableCell, Chip, Pagination, Modal, ModalContent, 
-  ModalHeader, ModalBody, ModalFooter, useDisclosure, Select, SelectItem,
-  Textarea, Progress, Spinner, Tooltip, Badge, Avatar
+  Card,
+  CardBody,
+  Button,
+  Input,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Pagination,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+  Select,
+  SelectItem,
+  Textarea,
+  Progress,
+  Spinner,
+  Tooltip,
+  Badge,
+  Avatar
 } from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { 
   Edit, Trash2, Plus, Search, Building2, CheckCircle, Users, BarChart3, 
   RefreshCw, Stethoscope, ShieldCheck, Wrench, Clock, AlertTriangle, 
@@ -19,6 +41,8 @@ import { getPermissionLevel } from '@/lib/utils';
 import { useI18n } from '@/contexts/I18nContext';
 import toast from 'react-hot-toast';
 
+import DataSummary from "@/components/DataSummary";
+import { useConfirm } from '@/components/ConfirmDialog';
 interface RoomStats {
   totalRooms: number;
   availableRooms: number;
@@ -31,7 +55,8 @@ interface RoomStats {
 }
 
 export default function RoomsPage() {
-  const { user } = useAuth();
+  const confirmAction = useConfirm();
+  const { user, can, canWrite } = useAuth();
   const { t } = useI18n();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -231,7 +256,7 @@ export default function RoomsPage() {
   };
 
   const handleDeleteRoom = async (roomId: string) => {
-    if (!confirm(t("rooms.delete_confirmation") || "Are you sure you want to delete this room?")) return;
+    if (!await confirmAction(t("rooms.delete_confirmation") || "Are you sure you want to delete this room?")) return;
     
     try {
       await roomsAPI.delete(roomId);
@@ -375,11 +400,11 @@ export default function RoomsPage() {
                 color="warning" 
                 isIconOnly
                 onPress={() => handleEditRoom(room)}
-              >
+             >
                 <Edit size={16} />
               </Button>
             </Tooltip>
-            {getPermissionLevel(user) >= 3 && (
+            {can('rooms.delete') && (
               <Tooltip content={t("rooms.delete") || "Delete"}>
                 <Button 
                   size="sm" 
@@ -387,7 +412,7 @@ export default function RoomsPage() {
                   color="danger" 
                   isIconOnly
                   onPress={() => handleDeleteRoom(room.room_id)}
-                >
+               >
                   <Trash2 size={16} />
                 </Button>
               </Tooltip>
@@ -413,7 +438,7 @@ export default function RoomsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("rooms.title") || "Room Management"}
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -431,10 +456,10 @@ export default function RoomsPage() {
             }}
             isLoading={loading}
             startContent={!loading && <RefreshCw size={16} />}
-          >
+         >
             {t("rooms.refresh") || "Refresh"}
           </Button>
-          {getPermissionLevel(user) >= 2 && (
+          {canWrite('rooms') && (
             <Button
               color="primary"
               onPress={() => {
@@ -443,73 +468,14 @@ export default function RoomsPage() {
                 onOpen();
               }}
               startContent={<Plus size={16} />}
-            >
+           >
               {t("rooms.add_room") || "Add Room"}
             </Button>
           )}
         </div>
       </div>
 
-      {/* Room Statistics Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardBody className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary-100 rounded-lg">
-                  <Building2 className="h-6 w-6 text-primary-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.totalRooms}</p>
-                  <p className="text-sm text-default-500">{t("rooms.total_rooms") || "Total Rooms"}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-          
-          <Card>
-            <CardBody className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-success-100 rounded-lg">
-                  <CheckCircle className="h-6 w-6 text-success-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.availableRooms}</p>
-                  <p className="text-sm text-default-500">{t("rooms.available_rooms") || "Available Rooms"}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-          
-          <Card>
-            <CardBody className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-warning-100 rounded-lg">
-                  <BedDouble className="h-6 w-6 text-warning-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.occupiedRooms}</p>
-                  <p className="text-sm text-default-500">{t("rooms.occupied_rooms") || "Occupied Rooms"}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-          
-          <Card>
-            <CardBody className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-secondary-100 rounded-lg">
-                  <Activity className="h-6 w-6 text-secondary-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.occupancyRate}%</p>
-                  <p className="text-sm text-default-500">{t("rooms.occupancy_rate") || "Occupancy Rate"}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-        </div>
-      )}
+      <DataSummary entity="rooms" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -535,7 +501,7 @@ export default function RoomsPage() {
                 }}
                 className="sm:max-w-xs"
                 isClearable
-              >
+             >
                 <SelectItem key="general">{t("rooms.general") || "General"}</SelectItem>
                 <SelectItem key="private">{t("rooms.private") || "Private"}</SelectItem>
                 <SelectItem key="icu">{t("rooms.icu") || "ICU"}</SelectItem>
@@ -553,7 +519,7 @@ export default function RoomsPage() {
                 }}
                 className="sm:max-w-xs"
                 isClearable
-              >
+             >
                 <SelectItem key="available">{t("rooms.available") || "Available"}</SelectItem>
                 <SelectItem key="occupied">{t("rooms.occupied") || "Occupied"}</SelectItem>
                 <SelectItem key="maintenance">{t("rooms.maintenance") || "Maintenance"}</SelectItem>
@@ -570,7 +536,7 @@ export default function RoomsPage() {
                 }}
                 className="sm:max-w-xs"
                 isClearable
-              >
+             >
                 {Array.isArray(departments) ? departments.map((department) => (
                   <SelectItem key={department._id || department.department_id || Math.random().toString()}>
                     {department.name}
@@ -592,7 +558,7 @@ export default function RoomsPage() {
                     setStatusFilter('all');
                     setDepartmentFilter('all');
                   }}
-                >
+               >
                   {t("common.clear_filters") || "Clear Filters"}
                 </Button>
               </div>
@@ -619,7 +585,7 @@ export default function RoomsPage() {
               </p>
             </div>
           ) : (
-            <Table aria-label="Rooms table" removeWrapper>
+            <Table aria-label="Rooms table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
               <TableHeader>
                 {columns.map((column) => (
                   <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -662,7 +628,7 @@ export default function RoomsPage() {
         }} 
         size="2xl" 
         scrollBehavior="inside"
-      >
+     >
         <ModalContent>
           <ModalHeader>
             {isAddMode ? 
@@ -671,7 +637,7 @@ export default function RoomsPage() {
           </ModalHeader>
           <ModalBody>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("rooms.room_number") || "Room Number"}
                 placeholder={t("rooms.enter_room_number") || "Enter room number"}
                 value={formData.room_number}
@@ -679,7 +645,7 @@ export default function RoomsPage() {
                 isRequired
               />
               
-              <Select
+              <Select labelPlacement="outside" variant="bordered"
                 label={t("rooms.room_type") || "Room Type"}
                 placeholder={t("rooms.select_type") || "Select room type"}
                 selectedKeys={[formData.room_type]}
@@ -688,7 +654,7 @@ export default function RoomsPage() {
                   setFormData({...formData, room_type: selectedKey as any});
                 }}
                 isRequired
-              >
+             >
                 <SelectItem key="general">{t("rooms.general") || "General"}</SelectItem>
                 <SelectItem key="private">{t("rooms.private") || "Private"}</SelectItem>
                 <SelectItem key="icu">{t("rooms.icu") || "ICU"}</SelectItem>
@@ -696,7 +662,7 @@ export default function RoomsPage() {
                 <SelectItem key="emergency">{t("rooms.emergency") || "Emergency"}</SelectItem>
               </Select>
               
-              <Select
+              <Select labelPlacement="outside" variant="bordered"
                 label={t("rooms.department") || "Department"}
                 placeholder={t("rooms.select_department") || "Select department"}
                 selectedKeys={formData.department_id ? [formData.department_id] : []}
@@ -705,7 +671,7 @@ export default function RoomsPage() {
                   setFormData({...formData, department_id: selectedKey || ""});
                 }}
                 isRequired
-              >
+             >
                 {Array.isArray(departments) ? departments.map((department) => (
                   <SelectItem key={department._id || department.department_id || Math.random().toString()}>
                     {department.name}
@@ -713,7 +679,7 @@ export default function RoomsPage() {
                 )) : []}
               </Select>
               
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("rooms.capacity") || "Capacity"}
                 type="number"
                 placeholder={t("rooms.enter_capacity") || "Enter capacity"}
@@ -723,14 +689,14 @@ export default function RoomsPage() {
                 min="1"
               />
               
-              <Select
+              <Select placeholder=" " labelPlacement="outside" variant="bordered"
                 label={t("rooms.status") || "Status"}
                 selectedKeys={[formData.status]}
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
                   setFormData({...formData, status: selectedKey as any});
                 }}
-              >
+             >
                 <SelectItem key="available">{t("rooms.available") || "Available"}</SelectItem>
                 <SelectItem key="occupied">{t("rooms.occupied") || "Occupied"}</SelectItem>
                 <SelectItem key="maintenance">{t("rooms.maintenance") || "Maintenance"}</SelectItem>
@@ -738,7 +704,7 @@ export default function RoomsPage() {
               </Select>
               
               <div className="md:col-span-2">
-                <Textarea
+                <Textarea labelPlacement="outside" variant="bordered"
                   label={t("rooms.equipment") || "Equipment"}
                   placeholder={t("rooms.enter_equipment") || "List available equipment in this room"}
                   value={formData.equipment}
@@ -748,7 +714,7 @@ export default function RoomsPage() {
               </div>
               
               <div className="md:col-span-2">
-                <Textarea
+                <Textarea labelPlacement="outside" variant="bordered"
                   label={t("rooms.notes") || "Notes"}
                   placeholder={t("rooms.enter_notes") || "Additional notes about this room"}
                   value={formData.notes}

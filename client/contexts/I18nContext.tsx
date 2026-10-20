@@ -18,6 +18,8 @@ interface I18nContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string, params?: Record<string, string>) => string;
+  /** Translate, or fall back to a translated/readable version of `fallback` instead of showing the key. */
+  te: (key: string, fallback?: string) => string;
   languages: { code: Language; name: string; flag: string }[];
 }
 
@@ -50,6 +52,8 @@ export function I18nProvider({ children }: I18nProviderProps) {
       const browserLang = navigator.language.split("-")[0] as Language;
       if (translations[browserLang]) {
         setLanguageState(browserLang);
+        // remembered so helpers outside React (date formatting) use the same language
+        localStorage.setItem("language", browserLang);
       }
     }
   }, []);
@@ -96,8 +100,21 @@ export function I18nProvider({ children }: I18nProviderProps) {
     return value;
   };
 
+  const te = (key: string, fallback?: string): string => {
+    const translated = t(key);
+
+    if (translated !== key) return translated;
+    const raw = fallback ?? key.split(".").pop() ?? key;
+    const normalized = raw.trim().toLowerCase().replace(/[\s_]+/g, "-");
+    const viaValues = t(`values.${normalized}`);
+
+    if (viaValues !== `values.${normalized}`) return viaValues;
+
+    return raw.replace(/[-_]+/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+  };
+
   return (
-    <I18nContext.Provider value={{ language, setLanguage, t, languages }}>
+    <I18nContext.Provider value={{ language, setLanguage, t, te, languages }}>
       {children}
     </I18nContext.Provider>
   );

@@ -3,9 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack -p 3001",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3001",
     "lint": "eslint --fix"
   },
   "dependencies": {
@@ -13,7 +13,7 @@
     "@heroui/react": "^2.8.2",
     "@heroui/system": "^2.4.20",
     "@heroui/theme": "^2.4.20",
-    "@internationalized/date": "^3.8.2",
+    "@internationalized/date": "^3.12.4",
     "@react-aria/ssr": "3.9.10",
     "@react-aria/visually-hidden": "3.8.26",
     "axios": "^1.6.0",
@@ -22,7 +22,7 @@
     "framer-motion": "11.18.2",
     "intl-messageformat": "10.7.16",
     "lucide-react": "^0.300.0",
-    "next": "15.3.1",
+    "next": "^15.5.28",
     "next-themes": "0.4.6",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -30,16 +30,19 @@
     "react-hot-toast": "^2.4.1"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "15.3.4",
+    "@eslint/compat": "^1.4.1",
+    "@eslint/eslintrc": "^3.3.7",
+    "@eslint/js": "^9.39.5",
+    "@next/eslint-plugin-next": "^15.5.28",
     "@react-types/shared": "3.30.0",
     "@tailwindcss/postcss": "4.1.11",
     "@types/node": "20.5.7",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
-    "@typescript-eslint/eslint-plugin": "8.34.1",
-    "@typescript-eslint/parser": "8.34.1",
-    "eslint": "9.25.1",
-    "eslint-config-next": "15.3.4",
+    "@typescript-eslint/eslint-plugin": "^8.72.0",
+    "@typescript-eslint/parser": "^8.72.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.28",
     "eslint-config-prettier": "9.1.0",
     "eslint-plugin-import": "2.31.0",
     "eslint-plugin-jsx-a11y": "6.10.2",
@@ -49,10 +52,17 @@
     "eslint-plugin-react-hooks": "5.2.0",
     "eslint-plugin-unused-imports": "4.1.4",
     "globals": "16.0.0",
-    "postcss": "8.5.6",
+    "postcss": "^8.5.31",
     "prettier": "3.5.3",
     "tailwind-variants": "2.0.1",
     "tailwindcss": "4.1.11",
     "typescript": "5.6.3"
+  },
+  "overrides": {
+    "postcss": "^8.5.31",
+    "braces": "^3.0.3",
+    "micromatch": "^4.0.8",
+    "fast-glob": "^3.3.3",
+    "@internationalized/date": "$@internationalized/date"
   }
 }

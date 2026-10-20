@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -22,8 +21,9 @@ import {
   useDisclosure,
   Select,
   SelectItem,
-  Textarea,
-} from "@heroui/react";
+  Textarea
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { UserCheck, Search, Trash2, Edit, Plus, Eye, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -34,8 +34,8 @@ import { formatDate, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 export default function SurgeryTeamsPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
+  const { user, can, canWrite } = useAuth();
+  const { t, te } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [surgeryTeams, setSurgeryTeams] = useState<SurgeryTeam[]>([]);
@@ -157,7 +157,7 @@ export default function SurgeryTeamsPage() {
   };
 
   const handleAddTeamMember = () => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('surgery_teams')) {
       toast.error(t("surgery_teams.insufficient_permissions"));
       return;
     }
@@ -174,7 +174,7 @@ export default function SurgeryTeamsPage() {
   };
 
   const handleEditTeamMember = (teamMember: SurgeryTeam) => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('surgery_teams')) {
       toast.error(t("surgery_teams.insufficient_permissions"));
       return;
     }
@@ -198,7 +198,7 @@ export default function SurgeryTeamsPage() {
   };
 
   const handleDeleteTeamMember = (teamMember: SurgeryTeam) => {
-    if (getPermissionLevel(user) < 3) {
+    if (!can('surgery_teams.delete')) {
       toast.error(t("surgery_teams.insufficient_permissions_delete"));
       return;
     }
@@ -302,24 +302,24 @@ export default function SurgeryTeamsPage() {
         );
       case "team_role":
         return (
-          <Chip color={getRoleColor(teamMember.role || "")} size="sm">
-            {t(`surgery_teams.${teamMember.role}`) || teamMember.role}
+          <Chip variant="flat" color={getRoleColor(teamMember.role || "")} size="sm">
+            {te(`surgery_teams.${teamMember.role}`, teamMember.role)}
           </Chip>
         );
       case "actions":
         const teamMemberId = teamMember.surgery_team_id || teamMember._id || teamMember.id?.toString() || "";
         return (
           <div className="flex gap-2 items-center">
-            <Button size="sm" color="secondary" variant="flat" onPress={() => handleViewTeamMember(teamMember)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleViewTeamMember(teamMember)}>
               <Eye size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('surgery_teams') && (
               <>
-                <Button size="sm" color="primary" variant="flat" onPress={() => handleEditTeamMember(teamMember)}>
+                <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditTeamMember(teamMember)}>
                   <Edit size={16} />
                 </Button>
-                {getPermissionLevel(user) >= 3 && (
-                  <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteTeamMember(teamMember)}>
+                {can('surgery_teams.delete') && (
+                  <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeleteTeamMember(teamMember)}>
                     <Trash2 size={16} />
                   </Button>
                 )}
@@ -364,14 +364,14 @@ export default function SurgeryTeamsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("surgery_teams.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("surgery_teams.subtitle")}
           </p>
         </div>
-        {getPermissionLevel(user) >= 2 && (
+        {canWrite('surgery_teams') && (
           <Button color="primary" onPress={handleAddTeamMember}>
             <Plus className="mr-2" size={20} />
             {t("surgery_teams.add_team_member")}
@@ -396,13 +396,13 @@ export default function SurgeryTeamsPage() {
               className="sm:w-48"
               selectedKeys={roleFilter !== "all" ? [roleFilter] : []}
               onSelectionChange={(keys) => setRoleFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("surgery_teams.all_roles")}</SelectItem>
               {teamRoles.map((role) => (
                 <SelectItem key={role}>
-                  {t(`surgery_teams.${role}`)}
+                  {te(`surgery_teams.${role}`)}
                 </SelectItem>
-              ))}
+              )) as any}
             </Select>
           </div>
         </CardBody>
@@ -411,7 +411,7 @@ export default function SurgeryTeamsPage() {
       {/* Surgery Teams Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Surgery teams table">
+          <Table aria-label="Surgery teams table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -421,7 +421,7 @@ export default function SurgeryTeamsPage() {
               isLoading={loading}
               loadingContent={t("surgery_teams.loading_teams")}
               emptyContent={t("surgery_teams.no_teams")}
-            >
+           >
               {surgeryTeams.map((teamMember) => (
                 <TableRow key={teamMember.id || teamMember.surgery_team_id}>
                   {columns.map((column) => (
@@ -435,8 +435,8 @@ export default function SurgeryTeamsPage() {
           </Table>
 
           {surgeryTeams.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center p-4">
-              <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} />
+            <div className="flex justify-center border-t border-divider p-3">
+              <Pagination isCompact showControls total={totalPages} page={currentPage} onChange={setCurrentPage} />
             </div>
           )}
         </CardBody>
@@ -451,14 +451,14 @@ export default function SurgeryTeamsPage() {
           <ModalBody>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("surgery_teams.surgery")}
                   placeholder={t("surgery_teams.select_surgery")}
                   selectedKeys={formData.surgery_id ? [formData.surgery_id] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, surgery_id: Array.from(keys)[0] as string || "" })}
                   isRequired
                   className="md:col-span-2"
-                >
+               >
                   {surgeries.filter(s => s.status === 'scheduled' || s.status === 'in-progress').map((surgery) => (
                     <SelectItem key={surgery.surgery_id || surgery._id || ""}>
                       {surgery.surgery_type} - {formatDate(surgery.scheduled_date || "")} at {surgery.scheduled_time}
@@ -466,7 +466,7 @@ export default function SurgeryTeamsPage() {
                   ))}
                 </Select>
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("surgery_teams.team_role")}
                   placeholder={t("surgery_teams.select_role")}
                   selectedKeys={formData.role ? [formData.role] : []}
@@ -475,22 +475,22 @@ export default function SurgeryTeamsPage() {
                     setFormData({ ...formData, role: newRole, staff_id: "" });
                   }}
                   isRequired
-                >
+               >
                   {teamRoles.map((role) => (
                     <SelectItem key={role}>
-                      {t(`surgery_teams.${role}`)}
+                      {te(`surgery_teams.${role}`)}
                     </SelectItem>
                   ))}
                 </Select>
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("surgery_teams.staff_member")}
                   placeholder={t("surgery_teams.select_staff")}
                   selectedKeys={formData.staff_id ? [formData.staff_id] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, staff_id: Array.from(keys)[0] as string || "" })}
                   isRequired
                   isDisabled={!formData.role}
-                >
+               >
                   {getFilteredStaff(formData.role).map((staffMember) => (
                     <SelectItem key={staffMember._id || staffMember.staff_id || ""}>
                       {staffMember.name} ({staffMember.role})
@@ -500,7 +500,7 @@ export default function SurgeryTeamsPage() {
                 </Select>
               </div>
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("surgery_teams.notes")}
                 placeholder={t("surgery_teams.notes_placeholder")}
                 value={formData.notes}
@@ -509,7 +509,7 @@ export default function SurgeryTeamsPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
+            <Button variant="light" onPress={onClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={handleSubmit}>
@@ -520,7 +520,7 @@ export default function SurgeryTeamsPage() {
       </Modal>
 
       {/* View Team Member Details Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("surgery_teams.team_member_details")}</ModalHeader>
           <ModalBody>
@@ -538,8 +538,8 @@ export default function SurgeryTeamsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("surgery_teams.team_role")}</p>
-                    <Chip color={getRoleColor(teamMemberToView.role || "")} size="sm">
-                      {t(`surgery_teams.${teamMemberToView.role}`) || teamMemberToView.role}
+                    <Chip variant="flat" color={getRoleColor(teamMemberToView.role || "")} size="sm">
+                      {te(`surgery_teams.${teamMemberToView.role}`, teamMemberToView.role)}
                     </Chip>
                   </div>
                 </div>
@@ -562,14 +562,14 @@ export default function SurgeryTeamsPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("surgery_teams.delete_team_member")}</ModalHeader>
           <ModalBody>
             <p>{t("surgery_teams.delete_confirmation")}</p>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onDeleteClose}>
+            <Button variant="light" onPress={onDeleteClose}>
               {t("common.cancel")}
             </Button>
             <Button color="danger" onPress={confirmDeleteTeamMember}>

@@ -1,3 +1,56 @@
 @import "tailwindcss";
 
-@config "../tailwind.config.js"
+@config "../tailwind.config.js";
+
+
+/* Modals: hairline-separated header/footer and a softer lift than a drop shadow */
+[role="dialog"].rounded-large {
+  box-shadow:
+    0 24px 60px -24px rgba(0, 0, 0, 0.35),
+    0 0 0 1px hsl(var(--heroui-default-200));
+}
+
+[role="dialog"].rounded-large > header {
+  border-bottom: 1px solid hsl(var(--heroui-default-100));
+}
+
+[role="dialog"].rounded-large > footer {
+  border-top: 1px solid hsl(var(--heroui-default-100));
+}
+
+[role="dialog"].rounded-large > header + div {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+/* Popovers (select, autocomplete, date picker...): the square focus frame around the rounded panel and
+   the scale-in "flicker" come from the transparent wrapper; keep a plain, quick fade instead */
+[data-slot="base"][role="dialog"]:not(.rounded-large),
+[data-slot="base"][role="dialog"]:not(.rounded-large):focus,
+[data-slot="base"][role="dialog"]:not(.rounded-large):focus-visible {
+  outline: none !important;
+}
+
+[data-slot="popover"] > [data-slot="base"],
+[data-slot="popover"] > [data-slot="base"] > [data-slot="content"] {
+  transform: none !important;
+}
+
+/* Sheets / modals: never draw the browser focus frame around the dialog itself */
+[role="dialog"]:focus,
+[role="dialog"]:focus-visible,
+[role="dialog"][data-focus-visible="true"] {
+  outline: none !important;
+}
+
+[role="dialog"].rounded-large:focus,
+[role="dialog"].rounded-large:focus-visible {
+  box-shadow:
+    0 24px 60px -24px rgba(0, 0, 0, 0.35),
+    0 0 0 1px hsl(var(--heroui-default-200)) !important;
+}
+
+/* Tables: row hover */
+table tbody tr:hover > td {
+  background-color: hsl(var(--heroui-default-50));
+}

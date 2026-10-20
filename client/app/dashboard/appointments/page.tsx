@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -22,8 +21,9 @@ import {
   useDisclosure,
   Select,
   SelectItem,
-  Textarea,
-} from "@heroui/react";
+  Textarea
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { DatePicker } from "@heroui/date-picker";
 import { parseDate } from "@internationalized/date";
 import { Calendar, Search, Trash2, Edit } from "lucide-react";
@@ -42,8 +42,11 @@ import toast from "react-hot-toast";
 import PatientAutocomplete from "@/components/PatientAutocomplete";
 import TimeWheelPicker from "@/components/TimeWheelPicker";
 
+import DataSummary from "@/components/DataSummary";
+import { useConfirm } from '@/components/ConfirmDialog';
 export default function AppointmentsPage() {
-  const { user } = useAuth();
+  const confirmAction = useConfirm();
+  const { user, can, canWrite } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -514,7 +517,7 @@ export default function AppointmentsPage() {
   };
 
   const handleDeleteAppointment = async (appointmentId: string) => {
-    if (confirm(t("appointments.delete_confirmation"))) {
+    if (await confirmAction(t("appointments.delete_confirmation"))) {
       try {
         await appointmentsAPI.delete(appointmentId);
         toast.success(t("appointments.appointment_deleted"));
@@ -635,13 +638,13 @@ export default function AppointmentsPage() {
         return appointment.reason || "N/A";
       case "status":
         return (
-          <Chip 
+          <Chip variant="flat" 
             color={getStatusColor(appointment.status || "scheduled")} 
             size="sm"
             classNames={{
               content: "text-xs font-medium"
             }}
-          >
+         >
             {appointment.status || "scheduled"}
           </Chip>
         );
@@ -653,15 +656,15 @@ export default function AppointmentsPage() {
           "";
         return (
           <div className="flex gap-2 items-center">
-            <Button
+            <Button isIconOnly
               size="sm"
               color="primary"
-              variant="flat"
+              variant="light"
               onPress={() => handleEditAppointment(appointment)}
-            >
+           >
               <Edit size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('appointments') && (
               <>
                 <Select
                   size="sm"
@@ -678,7 +681,7 @@ export default function AppointmentsPage() {
                     value: "text-xs",
                     trigger: "min-h-unit-8"
                   }}
-                >
+               >
                   <SelectItem key="scheduled">
                     {t("appointments.scheduled")}
                   </SelectItem>
@@ -692,12 +695,12 @@ export default function AppointmentsPage() {
                     {t("appointments.no_show")}
                   </SelectItem>
                 </Select>
-                <Button
+                <Button isIconOnly
                   size="sm"
                   color="danger"
-                  variant="flat"
+                  variant="light"
                   onPress={() => handleDeleteAppointment(appointmentId || "")}
-                >
+               >
                   <Trash2 size={16} />
                 </Button>
               </>
@@ -729,10 +732,10 @@ export default function AppointmentsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("appointments.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("appointments.subtitle")}
           </p>
         </div>
@@ -741,6 +744,8 @@ export default function AppointmentsPage() {
           {t("appointments.schedule_appointment")}
         </Button>
       </div>
+
+      <DataSummary entity="appointments" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -761,7 +766,7 @@ export default function AppointmentsPage() {
                 const selectedKey = Array.from(keys)[0] as string;
                 setStatusFilter(selectedKey || "all");
               }}
-            >
+           >
               <SelectItem key="all">{t("appointments.all_status")}</SelectItem>
               <SelectItem key="scheduled">
                 {t("appointments.scheduled")}
@@ -782,13 +787,7 @@ export default function AppointmentsPage() {
       <Card>
         <CardBody className="p-0">
           <Table 
-            aria-label="Appointments table"
-            classNames={{
-              td: "py-3",
-              th: "py-3",
-              tr: "border-b border-divider"
-            }}
-          >
+            aria-label="Appointments table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -810,7 +809,7 @@ export default function AppointmentsPage() {
                   <TableCell
                     colSpan={columns.length}
                     className="text-center py-8"
-                  >
+                 >
                     {loading
                       ? t("appointments.loading_appointments")
                       : t("appointments.no_appointments")}
@@ -838,7 +837,7 @@ export default function AppointmentsPage() {
         onClose={onClose}
         size="2xl"
         scrollBehavior="inside"
-      >
+     >
         <ModalContent>
           <ModalHeader>
             {isAddMode
@@ -868,7 +867,7 @@ export default function AppointmentsPage() {
               {/* Diğer alanlar - grid yapısında */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label="Departman"
                   placeholder="Departman seçin"
                   selectionMode="single"
@@ -885,14 +884,14 @@ export default function AppointmentsPage() {
                   isRequired
                   errorMessage={!formData.department_id ? "Lütfen bir departman seçin" : ""}
                   className="w-full"
-                >
+               >
                   {Array.isArray(departments) && departments.length > 0 ? (
                     departments
                       .filter(dept => dept.status === 'active')
                       .map((department) => (
                         <SelectItem 
                           key={department.department_id || department._id}
-                        >
+                       >
                           {department.name}
                         </SelectItem>
                       ))
@@ -903,7 +902,7 @@ export default function AppointmentsPage() {
                   )}
                 </Select>
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("appointments.staff_member")}
                   placeholder={formData.department_id ? "Doktor/Personel seçin" : "Önce departman seçin"}
                   selectionMode="single"
@@ -939,7 +938,7 @@ export default function AppointmentsPage() {
                   isDisabled={!formData.department_id}
                   errorMessage={!formData.staff_id ? "Lütfen bir doktor/personel seçin" : ""}
                   className="w-full"
-                >
+               >
                   {(() => {
                     console.log("Rendering staff dropdown...");
                     console.log("Staff array:", staff);
@@ -998,7 +997,7 @@ export default function AppointmentsPage() {
                       return (
                         <SelectItem 
                           key={itemKey}
-                        >
+                       >
                           {displayText}
                         </SelectItem>
                       );
@@ -1006,7 +1005,7 @@ export default function AppointmentsPage() {
                   })()}
                 </Select>
 
-                <DatePicker
+                <DatePicker labelPlacement="outside" variant="bordered"
                   label={t("appointments.appointment_date")}
                   value={
                     formData.appointment_date
@@ -1045,7 +1044,7 @@ export default function AppointmentsPage() {
               </div>
 
               {/* Tam genişlik alanlar */}
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("appointments.reason")}
                 value={formData.reason}
                 onChange={(e) =>
@@ -1057,7 +1056,7 @@ export default function AppointmentsPage() {
                 description="Randevu sebebini kısaca açıklayın"
               />
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("common.notes")}
                 value={formData.notes}
                 onChange={(e) =>

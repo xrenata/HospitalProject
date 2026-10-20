@@ -2,15 +2,32 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Card, CardBody, Button, Chip, Progress, Dropdown, DropdownTrigger,
-  DropdownMenu, DropdownItem, Modal, ModalContent, ModalHeader, 
-  ModalBody, ModalFooter, useDisclosure
+  Card,
+  CardBody,
+  Button,
+  Progress,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Skeleton,
+  useDisclosure
 } from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/I18nContext';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatCurrency, formatNumber, relativeTime } from '@/lib/utils';
 import { dashboardAPI } from '@/lib/api';
+import {
+  BarChart, Delta, Donut, Legend, SegmentBar, Sparkline, TONE,
+  type Segment, type Tone
+} from '@/components/charts';
 import {
   Users, Calendar, Check, DollarSign, Bell, Clock,
   Bed, TrendingUp, Activity, Settings, AlertTriangle,
@@ -18,6 +35,7 @@ import {
   MessageCircle, Phone, Mail, ChevronDown
 } from 'lucide-react';
 
+import toast from 'react-hot-toast';
 interface DashboardStats {
   totalPatients: number;
   totalAppointments: number;
@@ -35,6 +53,9 @@ interface RecentActivity {
   patient: string;
   description: string;
   time: string;
+  reason?: string;
+  staff?: string;
+  timestamp?: string;
   status: 'completed' | 'pending' | 'urgent';
 }
 
@@ -49,12 +70,110 @@ const initialStats: DashboardStats = {
   criticalAlerts: 0
 };
 
+interface Trends {
+  days: number;
+  labels: string[];
+  patients: { series: number[]; total: number; previous: number };
+  appointments: { series: number[]; total: number; previous: number };
+  revenue: { series: number[]; total: number; previous: number };
+  appointmentStatus: { scheduled: number; completed: number; cancelled: number; 'no-show': number };
+  rooms: { total: number; available: number; occupied: number; maintenance: number; reserved: number };
+  staffByRole: { role: string; count: number }[];
+}
+
+function StatCard({
+  label,
+  value,
+  icon,
+  href,
+  loading,
+  series,
+  delta,
+  tone = 'primary',
+  footer,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon: React.ReactNode;
+  href: string;
+  loading: boolean;
+  series?: number[];
+  delta?: { current: number; previous: number } | null;
+  tone?: Tone;
+  footer?: React.ReactNode;
+}) {
+  const router = useRouter();
+
+  return (
+    <Card
+      isPressable
+      className="w-full transition-colors hover:bg-default-50"
+      onPress={() => router.push(href)}
+   >
+      <CardBody className="gap-3 p-5">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-foreground-500">{label}</span>
+          <span className="text-foreground-400">{icon}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="truncate text-2xl font-semibold tabular-nums">
+            {loading ? <Skeleton className="h-8 w-16 rounded-md" /> : value}
+          </div>
+          {!loading && delta && <Delta current={delta.current} previous={delta.previous} />}
+        </div>
+        {series && <Sparkline className={TONE[tone].text} data={series} />}
+        {footer}
+      </CardBody>
+    </Card>
+  );
+}
+
+function AttentionCard({
+  label,
+  value,
+  caption,
+  icon,
+  tone,
+  loading,
+  onPress,
+}: {
+  label: string;
+  value: number;
+  caption: string;
+  icon: React.ReactNode;
+  tone: Tone;
+  loading: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Card isPressable className="w-full transition-colors hover:bg-default-50" onPress={onPress}>
+      <CardBody className="flex-row items-center gap-4 p-5">
+        <span
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
+            tone === 'default' ? 'bg-default-100 text-foreground-500' : `${TONE[tone].bg}/10 ${TONE[tone].text}`
+          }`}
+       >
+          {icon}
+        </span>
+        <div className="min-w-0 flex-1 text-left">
+          <p className="text-sm text-foreground-500">{label}</p>
+          <div className="text-2xl font-semibold tabular-nums">
+            {loading ? <Skeleton className="h-8 w-10 rounded-md" /> : value}
+          </div>
+        </div>
+        <span className="hidden text-xs text-foreground-400 sm:block lg:hidden xl:block">{caption}</span>
+      </CardBody>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats>(initialStats);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [trends, setTrends] = useState<Trends | null>(null);
   const [loading, setLoading] = useState(true);
   const { isOpen: isEmergencyOpen, onOpen: onEmergencyOpen, onClose: onEmergencyClose } = useDisclosure();
   const [emergencyType, setEmergencyType] = useState('');
@@ -65,13 +184,15 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const [statsResponse, activityResponse] = await Promise.all([
+        const [statsResponse, activityResponse, trendsResponse] = await Promise.all([
           dashboardAPI.getStats(),
-          dashboardAPI.getRecentActivity()
+          dashboardAPI.getRecentActivity(),
+          dashboardAPI.getTrends().catch(() => null)
         ]);
         
         setStats(statsResponse.data);
         setRecentActivity(activityResponse.data);
+        setTrends(trendsResponse?.data ?? null);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         // Keep initial empty state on error
@@ -83,8 +204,36 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, []);
 
-  // Calculate room occupancy percentage
-  const roomOccupancy = Math.round(((45 - stats.availableRooms) / 45) * 100);
+  // Chart data
+  const rooms = trends?.rooms;
+  const roomOccupancy = rooms && rooms.total ? Math.round((rooms.occupied / rooms.total) * 100) : 0;
+  const roomSegments: Segment[] = [
+    { label: t('home.occupied'), value: rooms?.occupied ?? 0, tone: 'primary' },
+    { label: t('home.available'), value: rooms?.available ?? 0, tone: 'success' },
+    { label: t('home.reserved'), value: rooms?.reserved ?? 0, tone: 'warning' },
+    { label: t('home.maintenance'), value: rooms?.maintenance ?? 0, tone: 'default' },
+  ];
+  const appointmentSegments: Segment[] = [
+    { label: t('home.completed'), value: trends?.appointmentStatus.completed ?? 0, tone: 'success' },
+    { label: t('home.scheduled'), value: trends?.appointmentStatus.scheduled ?? 0, tone: 'primary' },
+    { label: t('home.cancelled'), value: trends?.appointmentStatus.cancelled ?? 0, tone: 'warning' },
+    { label: t('home.no_show'), value: trends?.appointmentStatus['no-show'] ?? 0, tone: 'danger' },
+  ];
+  const staffTones: Tone[] = ['primary', 'success', 'warning'];
+  const staffSegments: Segment[] = (trends?.staffByRole ?? []).slice(0, 3).map((r, i) => ({
+    label: r.role,
+    value: r.count,
+    tone: staffTones[i],
+  }));
+
+  // Only offer what this person is allowed to do
+  const { can } = useAuth();
+  const quickActions = [
+    { key: 'new-patient', label: t('home.add_patient'), icon: <UserPlus size={16} />, allowed: can('patients.create') },
+    { key: 'new-appointment', label: t('home.schedule_appointment'), icon: <CalendarPlus size={16} />, allowed: can('appointments.create') },
+    { key: 'new-record', label: t('home.new_record'), icon: <FileText size={16} />, allowed: can('treatments.create') },
+    { key: 'check-rooms', label: t('home.check_rooms'), icon: <Bed size={16} />, allowed: can('rooms.view') },
+  ].filter((a) => a.allowed);
 
   // Quick Actions handlers
   const handleQuickAction = (action: string) => {
@@ -105,7 +254,7 @@ export default function DashboardPage() {
         router.push('/dashboard/staff');
         break;
       case 'reports':
-        alert('Reports functionality coming soon!');
+        toast.success('Reports functionality coming soon!');
         break;
       default:
         break;
@@ -123,13 +272,13 @@ export default function DashboardPage() {
         description: emergencyDescription
       });
       
-      alert('Emergency alert sent successfully to all staff!');
+      toast.success('Emergency alert sent successfully to all staff!');
       setEmergencyType('');
       setEmergencyDescription('');
       onEmergencyClose();
     } catch (error) {
       console.error('Error sending emergency alert:', error);
-      alert('Failed to send emergency alert. Please try again.');
+      toast.error('Failed to send emergency alert. Please try again.');
     }
   };
 
@@ -156,11 +305,11 @@ export default function DashboardPage() {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'appointment': return <Calendar className="text-blue-500" size={16} />;
-      case 'admission': return <Users className="text-green-500" size={16} />;
-      case 'discharge': return <TrendingUp className="text-purple-500" size={16} />;
-      case 'emergency': return <AlertTriangle className="text-red-500" size={16} />;
-      default: return <Activity className="text-gray-500" size={16} />;
+      case 'appointment': return <Calendar className="text-foreground-500" size={16} />;
+      case 'admission': return <Users className="text-foreground-500" size={16} />;
+      case 'discharge': return <TrendingUp className="text-foreground-500" size={16} />;
+      case 'emergency': return <AlertTriangle className="text-danger" size={16} />;
+      default: return <Activity className="text-foreground-500" size={16} />;
     }
   };
 
@@ -170,10 +319,10 @@ export default function DashboardPage() {
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-            Welcome back, {user?.username}!
+            {t('home.welcome').replace('{name}', user?.username ?? '')}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Here's what's happening at your hospital today.
+            {t('home.subtitle')}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -181,263 +330,239 @@ export default function DashboardPage() {
             <DropdownTrigger>
               <Button color="primary" variant="flat" size="sm" className="w-full sm:w-auto">
                 <Clock className="mr-2" size={16} />
-                Quick Actions
+                {t('home.quick_actions')}
                 <ChevronDown className="ml-2" size={14} />
               </Button>
             </DropdownTrigger>
             <DropdownMenu aria-label="Quick Actions">
-              <DropdownItem
-                key="new-patient"
-                startContent={<UserPlus size={16} />}
-                onPress={() => handleQuickAction('new-patient')}
-              >
-                Add New Patient
-              </DropdownItem>
-              <DropdownItem
-                key="new-appointment"
-                startContent={<CalendarPlus size={16} />}
-                onPress={() => handleQuickAction('new-appointment')}
-              >
-                Schedule Appointment
-              </DropdownItem>
-              <DropdownItem
-                key="new-record"
-                startContent={<FileText size={16} />}
-                onPress={() => handleQuickAction('new-record')}
-              >
-                New Medical Record
-              </DropdownItem>
-              <DropdownItem
-                key="check-rooms"
-                startContent={<Bed size={16} />}
-                onPress={() => handleQuickAction('check-rooms')}
-              >
-                Check Room Availability
-              </DropdownItem>
-              <DropdownItem
-                key="staff-schedule"
-                startContent={<Stethoscope size={16} />}
-                onPress={() => handleQuickAction('staff-schedule')}
-              >
-                Staff Schedule
-              </DropdownItem>
-              <DropdownItem
-                key="reports"
-                startContent={<FileText size={16} />}
-                onPress={() => handleQuickAction('reports')}
-              >
-                Generate Reports
-              </DropdownItem>
+              {quickActions.map((action) => (
+                <DropdownItem key={action.key} startContent={action.icon} onPress={() => handleQuickAction(action.key)}>
+                  {action.label}
+                </DropdownItem>
+              )) as any}
             </DropdownMenu>
           </Dropdown>
           <Button color="danger" size="sm" className="w-full sm:w-auto" onPress={handleEmergencyAlert}>
             <AlertTriangle className="mr-2" size={16} />
-            Emergency Alert
+            {t('home.emergency_alert')}
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-        <Card 
-          className="w-full cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
-          isPressable
-          onPress={() => router.push('/dashboard/patients')}
-        >
-          <CardBody className="p-4 sm:p-6">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Users className="text-blue-600 dark:text-blue-400" size={20} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm text-muted-foreground">Total Patients</p>
-                <p className="text-lg sm:text-2xl font-bold text-foreground truncate">
-                  {loading ? '...' : formatNumber(stats.totalPatients)}
-                </p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card 
-          className="w-full cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
-          isPressable
-          onPress={() => router.push('/dashboard/appointments')}
-        >
-          <CardBody className="p-4 sm:p-6">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Calendar className="text-green-600 dark:text-green-400" size={20} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm text-muted-foreground">Appointments Today</p>
-                <p className="text-lg sm:text-2xl font-bold text-foreground">
-                  {loading ? '...' : stats.appointmentsToday}
-                </p>
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
+        <StatCard
+          delta={trends && { current: trends.patients.total, previous: trends.patients.previous }}
+          href="/dashboard/patients"
+          icon={<Users size={18} />}
+          label={t('home.total_patients')}
+          loading={loading}
+          series={trends?.patients.series}
+          tone="primary"
+          value={formatNumber(stats.totalPatients)}
+        />
+        <StatCard
+          delta={trends && { current: trends.appointments.total, previous: trends.appointments.previous }}
+          href="/dashboard/appointments"
+          icon={<Calendar size={18} />}
+          label={t('home.appointments_today')}
+          loading={loading}
+          series={trends?.appointments.series}
+          tone="success"
+          value={stats.appointmentsToday}
+        />
+        <StatCard
+          footer={
+            <div className="space-y-2.5">
+              <SegmentBar segments={staffSegments} />
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {staffSegments.map((s) => (
+                  <span key={s.label} className="flex items-center gap-1.5 text-xs text-foreground-500">
+                    <span className={`h-2 w-2 rounded-full ${TONE[s.tone].bg}`} />
+                    {s.label}
+                    <span className="font-medium tabular-nums text-foreground">{s.value}</span>
+                  </span>
+                ))}
               </div>
             </div>
-          </CardBody>
-        </Card>
-
-        <Card 
-          className="w-full cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
-          isPressable
-          onPress={() => router.push('/dashboard/staff')}
-        >
-          <CardBody className="p-4 sm:p-6">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Check className="text-purple-600 dark:text-purple-400" size={20} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm text-muted-foreground">Active Staff</p>
-                <p className="text-lg sm:text-2xl font-bold text-foreground">
-                  {loading ? '...' : stats.totalStaff}
-                </p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card 
-          className="w-full cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
-          isPressable
-          onPress={() => router.push('/dashboard/analytics?tab=financial')}
-        >
-          <CardBody className="p-4 sm:p-6">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <DollarSign className="text-yellow-600 dark:text-yellow-400" size={20} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm text-muted-foreground">Monthly Revenue</p>
-                <p className="text-lg sm:text-2xl font-bold text-foreground truncate">
-                  {loading ? '...' : formatCurrency(stats.totalRevenue)}
-                </p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
+          }
+          href="/dashboard/staff"
+          icon={<Stethoscope size={18} />}
+          label={t('home.active_staff')}
+          loading={loading}
+          value={stats.totalStaff}
+        />
+        <StatCard
+          delta={trends && { current: trends.revenue.total, previous: trends.revenue.previous }}
+          href="/dashboard/analytics?tab=financial"
+          icon={<DollarSign size={18} />}
+          label={t('home.monthly_revenue')}
+          loading={loading}
+          series={trends?.revenue.series}
+          tone="warning"
+          value={formatCurrency(stats.totalRevenue)}
+        />
       </div>
 
-      {/* Secondary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-        <Card 
-          className="w-full cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02]"
+      {/* Appointments + rooms */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 sm:gap-4">
+        <Card className="w-full lg:col-span-2">
+          <CardBody className="gap-5 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-semibold">{t('home.appointments')}</h3>
+                <p className="text-xs text-foreground-500">{t('home.last_days').replace('{n}', String(trends?.days ?? 14))}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-semibold tabular-nums">{trends?.appointments.total ?? 0}</span>
+                {trends && (
+                  <Delta current={trends.appointments.total} previous={trends.appointments.previous} />
+                )}
+              </div>
+            </div>
+
+            {trends ? (
+              <BarChart data={trends.appointments.series} labels={trends.labels} locale={language} />
+            ) : (
+              <Skeleton className="h-52 w-full rounded-xl" />
+            )}
+
+            <div className="space-y-3 border-t border-divider pt-4">
+              <SegmentBar segments={appointmentSegments} />
+              <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+                {appointmentSegments.map((s) => (
+                  <span key={s.label} className="flex items-center gap-2 text-xs text-foreground-500">
+                    <span className={`h-2 w-2 rounded-full ${TONE[s.tone].bg}`} />
+                    {s.label}
+                    <span className="font-medium tabular-nums text-foreground">{s.value}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card
           isPressable
+          className="w-full transition-colors hover:bg-default-50"
           onPress={() => router.push('/dashboard/rooms')}
-        >
-          <CardBody className="p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-semibold">Room Occupancy</h3>
-              <Chip color={roomOccupancy > 80 ? 'danger' : roomOccupancy > 60 ? 'warning' : 'success'} size="sm">
-                {roomOccupancy}%
-              </Chip>
-            </div>
-            <Progress
-              value={roomOccupancy}
-              color={roomOccupancy > 80 ? 'danger' : roomOccupancy > 60 ? 'warning' : 'success'}
-              className="mb-2"
-            />
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              {loading ? 'Loading...' : `${stats.availableRooms} of 45 rooms available`}
-            </p>
-          </CardBody>
-        </Card>
-
-        <Card className="w-full">
-          <CardBody className="p-4 sm:p-6">
-            <div className="text-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                <AlertTriangle className="text-red-600 dark:text-red-400" size={24} />
+       >
+          <CardBody className="gap-5 p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-semibold">{t('home.room_occupancy')}</h3>
+                <p className="text-xs text-foreground-500">{t('home.rooms_total').replace('{n}', String(trends?.rooms.total ?? 0))}</p>
               </div>
-              <h3 className="text-base sm:text-lg font-semibold mb-1">Critical Alerts</h3>
-              <p className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400 mb-2">
-                {loading ? '...' : stats.criticalAlerts}
-              </p>
-              <Button size="sm" color="danger" variant="flat" className="w-full sm:w-auto" onPress={handleViewAllAlerts}>
-                View All
-              </Button>
+              <span className="text-foreground-400">
+                <Bed size={18} />
+              </span>
             </div>
-          </CardBody>
-        </Card>
-
-        <Card className="w-full md:col-span-2 xl:col-span-1">
-          <CardBody className="p-4 sm:p-6">
-            <div className="text-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Clock className="text-orange-600 dark:text-orange-400" size={24} />
+            <div className="flex flex-1 flex-col items-center justify-center gap-6 sm:flex-row lg:flex-col xl:flex-row">
+              <Donut segments={roomSegments}>
+                <span className="text-3xl font-semibold tabular-nums">{roomOccupancy}%</span>
+                <span className="text-xs text-foreground-500">{t('home.occupied_label')}</span>
+              </Donut>
+              <div className="w-full min-w-0 max-w-[12rem]">
+                <Legend segments={roomSegments} />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold mb-1">Pending Tests</h3>
-              <p className="text-2xl sm:text-3xl font-bold text-orange-600 dark:text-orange-400 mb-2">
-                {loading ? '...' : stats.pendingTests}
-              </p>
-              <Button size="sm" color="warning" variant="flat" className="w-full sm:w-auto" onPress={handleReviewTests}>
-                Review
-              </Button>
             </div>
           </CardBody>
         </Card>
       </div>
 
-      {/* Recent Activity */}
-      <Card className="w-full">
-        <CardBody className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6">
-            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-0">Recent Activity</h3>
-            <Button size="sm" variant="flat" className="w-full sm:w-auto" onPress={handleViewAllActivity}>
-              View All
-            </Button>
-          </div>
-          <div className="space-y-3 sm:space-y-4">
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Activity className="text-muted-foreground animate-pulse" size={24} />
+      {/* Activity + attention */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 sm:gap-4">
+        <Card className="w-full lg:col-span-2">
+          <CardBody className="p-0">
+            <div className="flex items-center justify-between px-5 py-4">
+              <h3 className="text-base font-semibold">{t('home.recent_activity')}</h3>
+              <Button size="sm" variant="bordered" onPress={handleViewAllActivity}>
+                {t('home.view_all')}
+              </Button>
+            </div>
+            <div className="border-t border-divider">
+              {loading ? (
+                <div className="space-y-4 p-5">
+                  {[0, 1, 2].map((i) => (
+                    <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                  ))}
                 </div>
-                <p className="text-sm text-muted-foreground">Loading recent activity...</p>
-              </div>
-            ) : recentActivity.length > 0 ? (
-              recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start sm:items-center gap-3 sm:gap-4 p-3 bg-muted/50 rounded-lg">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-background rounded-full flex items-center justify-center flex-shrink-0">
-                    {getActivityIcon(activity.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
-                      <p className="font-medium text-foreground truncate">
-                        {activity.patient}
-                      </p>
-                      <Chip size="sm" color={getStatusColor(activity.status)}>
-                        {activity.status}
-                      </Chip>
-                    </div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      {activity.description}
-                    </p>
-                  </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground flex-shrink-0">
-                    {activity.time}
+              ) : recentActivity.length > 0 ? (
+                <ul className="divide-y divide-divider">
+                  {recentActivity.slice(0, 6).map((activity) => (
+                    <li key={activity.id} className="flex items-center gap-3 px-5 py-3">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-default-100">
+                        {getActivityIcon(activity.type)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-medium">{activity.patient}</p>
+                          <Chip color={getStatusColor(activity.status)} size="sm" variant="flat">
+                            {activity.status}
+                          </Chip>
+                        </div>
+                        <p className="truncate text-xs text-foreground-500">{activity.reason ? `${activity.reason} · ${activity.staff ?? ''}` : activity.description}</p>
+                      </div>
+                      <span className="shrink-0 text-xs text-foreground-400">{activity.timestamp ? relativeTime(activity.timestamp, language) : activity.time}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="flex flex-col items-center px-5 py-12 text-center">
+                  <Activity className="mb-3 text-foreground-400" size={22} />
+                  <p className="text-sm font-medium">{t('home.no_activity')}</p>
+                  <p className="mt-1 text-xs text-foreground-500">
+                    {t('home.no_activity_desc')}
                   </p>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Activity className="text-muted-foreground" size={24} />
-                </div>
-                <h4 className="text-lg font-medium text-foreground mb-2">No Recent Activity</h4>
-                <p className="text-sm text-muted-foreground">
-                  There are currently no recent activities to display.
-                </p>
-              </div>
-            )}
-          </div>
-        </CardBody>
-      </Card>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-1 lg:content-start">
+          <AttentionCard
+            caption={stats.criticalAlerts > 0 ? t('home.needs_attention') : t('home.all_clear')}
+            icon={<AlertTriangle size={18} />}
+            label={t('home.critical_alerts')}
+            loading={loading}
+            tone={stats.criticalAlerts > 0 ? 'danger' : 'default'}
+            value={stats.criticalAlerts}
+            onPress={handleViewAllAlerts}
+          />
+          <AttentionCard
+            caption={t('home.awaiting_review')}
+            icon={<Clock size={18} />}
+            label={t('home.pending_tests')}
+            loading={loading}
+            tone={stats.pendingTests > 0 ? 'warning' : 'default'}
+            value={stats.pendingTests}
+            onPress={handleReviewTests}
+          />
+
+          {quickActions.length > 0 && (
+            <Card className="w-full sm:col-span-2 lg:col-span-1">
+              <CardBody className="p-2">
+                <p className="px-3 pb-1 pt-3 text-sm font-semibold">{t('home.quick_actions')}</p>
+                {quickActions.map((action) => (
+                  <button
+                    key={action.key}
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-foreground-600 transition-colors hover:bg-default-100 hover:text-foreground"
+                    type="button"
+                    onClick={() => handleQuickAction(action.key)}
+                 >
+                    <span className="text-foreground-400">{action.icon}</span>
+                    {action.label}
+                  </button>
+                ))}
+              </CardBody>
+            </Card>
+          )}
+        </div>
+      </div>
 
       {/* Emergency Alert Modal */}
-      <Modal isOpen={isEmergencyOpen} onClose={onEmergencyClose} size="2xl">
+      <Modal isOpen={isEmergencyOpen} onClose={onEmergencyClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
             <div className="flex items-center gap-3">
@@ -458,7 +583,7 @@ export default function DashboardPage() {
                   className="w-full p-3 border border-gray-300 rounded-lg bg-background text-foreground"
                   value={emergencyType}
                   onChange={(e) => setEmergencyType(e.target.value)}
-                >
+               >
                   <option value="">Select emergency type...</option>
                   <option value="medical">Medical Emergency</option>
                   <option value="fire">Fire Emergency</option>
@@ -498,7 +623,7 @@ export default function DashboardPage() {
               color="danger" 
               onPress={handleEmergencySubmit}
               isDisabled={!emergencyType || !emergencyDescription.trim()}
-            >
+           >
               <AlertTriangle className="mr-2" size={16} />
               Send Emergency Alert
             </Button>

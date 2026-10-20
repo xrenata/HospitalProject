@@ -1,5 +1,4 @@
-const requiredEnv = ["PORT"];
-const db = require("../Database/db");
+const requiredEnv = ["PORT", "JWT_SECRET"];
 
 const requireCheck = () => {
   requiredEnv.forEach((env) => {
@@ -10,13 +9,4 @@ const requireCheck = () => {
   });
 };
 
-const checkDB = async () => {
-  db.connect((err) => {
-    if (err) {
-      console.error(err);
-    } else {
-      db.end();
-    }
-  });
-};
-module.exports = { requireCheck, checkDB };
+module.exports = { requireCheck };

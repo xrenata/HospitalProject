@@ -1,295 +1,230 @@
 # Hospital Management System
 
-A modern and comprehensive hospital management system. This project is a full-stack web application developed to manage hospital operations efficiently.
+A full-stack hospital management system: patient files, appointments, labs, prescriptions, staff, fine-grained permissions, reports, and support for several hospitals under one roof. Next.js on the front, Express and MongoDB on the back.
 
-## 🏥 About the Project
+![Dashboard](docs/screenshots/02-dashboard.png)
 
-This hospital management system is designed to efficiently manage hospital staff, patients, equipment, appointments, surgeries, and other related tasks. Built with modern web technologies, it features a user-friendly interface and a powerful backend API that simplifies hospital management.
+## Highlights
 
-## ✨ Features
+- **A patient file you can work from.** Everything about a patient lives on one page, and you add to it right there: appointments, visits, treatments, prescriptions, lab results, insurance and vital signs.
+- **Role-based access control with per-person overrides.** 100+ permissions, 8 built-in roles, your own roles, and "extra" or "blocked" permissions for individuals. Every change is audited.
+- **Several hospitals, one system.** Hospitals can belong to a group (network). Each keeps its own patients, staff and records; people only see the hospitals they are assigned to.
+- **Reports that read like reports.** Pick a type and a period, get KPIs and charts, then save it, export CSV or print.
+- **Designed to look calm.** Flat, consistent UI, light and dark themes, English and Turkish.
 
-### 🎯 Core Features
-- **Patient Management**: Patient registration, information updates, and tracking system
-- **Staff Management**: Doctor, nurse, and other staff management
-- **Appointment System**: Automated appointment scheduling and management
-- **Surgery Management**: Surgery planning and team management
-- **Room and Equipment Tracking**: Hospital rooms and medical equipment management
-- **Medication Management**: Drug inventory tracking and prescription management
-- **Laboratory Tests**: Test results and reporting
-- **Insurance Management**: Patient insurance information tracking
-- **Complaint Management**: Patient complaints and feedback system
-- **Analytics and Reporting**: Detailed analysis and reporting tools
+## Screenshots
 
-### 🎨 User Interface
-- Modern and responsive design
-- Dark/Light theme support
-- Turkish and English language support
-- User-friendly dashboard
-- Real-time notifications
+### Sign in
 
-## 🛠️ Technologies
+![Login](docs/screenshots/01-login.png)
 
-### Frontend (Client)
-- **Next.js 15** - React framework
-- **TypeScript** - Type safety
-- **HeroUI v2** - Modern UI components
-- **Tailwind CSS** - Utility-first CSS framework
-- **Framer Motion** - Animations
-- **React Hook Form** - Form management
-- **Axios** - HTTP client
-- **next-themes** - Theme management
+### Patients
 
-### Backend (Server)
-- **Node.js** - JavaScript runtime
-- **Express.js** - Web framework
-- **MongoDB** - NoSQL database
-- **Mongoose** - MongoDB object modeling
-- **JWT** - Authentication
-- **bcrypt** - Password hashing
-- **Swagger** - API documentation
-- **CORS** - Cross-origin resource sharing
+Search, filter and register patients. A summary strip shows totals, trend and breakdowns for whatever you are looking at.
 
-## 📋 Requirements
+![Patients](docs/screenshots/03-patients.png)
 
-To run this project, you need the following software installed:
+![Add patient](docs/screenshots/09-add-patient.png)
 
-- [Node.js](https://nodejs.org/) (v18 or higher)
-- [MongoDB](https://www.mongodb.com/) (v4.4 or higher)
-- [pnpm](https://pnpm.io/) (recommended) or npm
+### The patient file
 
-## 🚀 Installation
+Timeline of everything that happened, key numbers at the top, allergies called out, active medication and insurance on the side.
 
-### 1. Clone the Repository
+![Patient file](docs/screenshots/04-patient-file.png)
+
+**Add to this file** is available from the header and from every tab. What you can add depends on your permissions.
+
+![Add menu](docs/screenshots/07-add-menu.png)
+
+Lab results with reference ranges, out-of-range flags and trends over time:
+
+![Lab results](docs/screenshots/05-patient-lab.png)
+
+Entering a whole blood panel at once. Reference ranges follow the patient's sex, and each value is flagged as you type:
+
+![Add lab panel](docs/screenshots/08-add-lab-panel.png)
+
+Vital signs with latest readings, sparklines and history:
+
+![Vitals](docs/screenshots/06-patient-vitals.png)
+
+Other forms worth noting: appointments grey out the times a doctor is already booked, and prescriptions show stock and warn about the patient's allergies.
+
+### Staff and permissions
+
+Staff directory with server-side search, filters and bulk actions. Open a person to edit their details, role and sign-in account.
+
+![Staff](docs/screenshots/10-staff.png)
+
+Each person has an access matrix. See what comes from the role, add extra permissions, or block specific ones.
+
+![Staff access](docs/screenshots/11-staff-access.png)
+
+Roles are editable and show who holds them and what changed recently:
+
+![Roles](docs/screenshots/12-roles.png)
+
+### Reports
+
+![Reports](docs/screenshots/13-reports.png)
+
+### Hospitals
+
+Hospitals grouped by network, each with its own numbers. Switch between them from the sidebar.
+
+![Hospitals](docs/screenshots/14-hospitals.png)
+
+### Dark mode
+
+![Dark dashboard](docs/screenshots/15-dashboard-dark.png)
+
+## Features
+
+**Patient care**
+- Patients, appointments (double-booking is rejected), visits, medical records
+- Tests and lab panels with reference ranges and flags, vital signs with BMI
+- Treatments, prescriptions linked to the medication stock, surgeries and surgery teams
+- Insurance policies
+
+**Hospital operations**
+- Staff, departments, rooms, shifts
+- Medications and equipment inventory
+- Billing and invoices, blood bank, maintenance requests, incident reports, ambulance fleet
+- Complaints, patient feedback, alerts
+
+**Administration**
+- Roles and permissions with audit log
+- Multiple hospitals and groups
+- Reports with history, analytics, activity feed
+
+## Access control
+
+A permission looks like `patients.edit`. Resources have `view`, `create`, `edit` and `delete`, and some have extras such as `patients.medical`, `staff.salary` or `staff.assign_roles`.
+
+| Role | What it is for |
+|------|----------------|
+| Administrator | Everything |
+| Doctor | Treats patients: records, prescriptions, tests, surgeries |
+| Nurse | Day-to-day care: vitals, visits, room status |
+| Receptionist | Registration, appointments, insurance details, invoices |
+| Lab technician | Tests and results, blood bank |
+| Pharmacist | Prescriptions and medication stock |
+| Billing & insurance | Insurance, billing, financial reports |
+| Read-only auditor | Sees everything except sensitive data, changes nothing |
+
+Permissions are read from the database on every request, so changing a role or disabling an account applies immediately. The last administrator can never be removed.
+
+## Tech stack
+
+| Part | Technologies |
+|------|--------------|
+| Frontend | Next.js 15 (App Router), TypeScript, HeroUI, Tailwind CSS 4, Axios, next-themes |
+| Backend | Node.js, Express, Mongoose, JWT, bcrypt, helmet |
+| Database | MongoDB (local or Atlas) |
+| API docs | Swagger / Scalar at `/api-docs` |
+
+## Getting started
+
+You need Node.js 18+ and a MongoDB database (local or Atlas).
 
 ```bash
-git clone https://github.com/xrenata/hospital.git
-cd hospital
+git clone <repo-url>
+cd HospitalProject
 ```
 
-### 2. Backend Setup
+**Backend**
 
 ```bash
 cd server
 npm install
+cp .env.example .env     # then fill in MONGODB_URI and JWT_SECRET
+npm run create-users     # creates admin, doctor and nurse accounts
+npm run dev              # http://localhost:3000
 ```
 
-### 3. Database Setup
-
-Make sure MongoDB is running on your system. The application will automatically create the database if it doesn't exist.
-
-### 4. Backend Environment Variables
-
-Create a `.env` file in the `server` directory:
-
-```plaintext
-# Database Variables
-MONGODB_URI=mongodb://localhost:27017/hospital_management
-
-# Express Variables
-HOST=localhost
-PORT=3000
-JWT_SECRET=your-secret-key
-```
-
-### 5. Frontend Setup
-
-```bash
-cd ../client
-pnpm install
-```
-
-### 6. Frontend Environment Variables
-
-Create a `.env.local` file in the `client` directory:
-
-```plaintext
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
-```
-
-## 🏃‍♂️ Running the Application
-
-### Start the Backend
-
-```bash
-cd server
-npm run dev
-```
-
-The backend server will run at `http://localhost:3000`.
-
-### Start the Frontend
+**Frontend**
 
 ```bash
 cd client
-pnpm dev
+npm install
+cp .env.example .env.local
+npm run dev              # http://localhost:3001
 ```
 
-The frontend application will run at `http://localhost:3001`.
+### Demo data
 
-## 📊 Database Schema
-
-The project uses MongoDB with Mongoose schemas for data modeling. Key collections include:
-
-- **Patients**: Patient information and medical history
-- **Staff**: Hospital staff and personnel data
-- **Departments**: Hospital departments and their details
-- **Appointments**: Patient appointment scheduling
-- **Surgeries**: Surgery planning and management
-- **Medications**: Drug inventory and prescriptions
-- **Rooms**: Hospital room management
-- **Equipment**: Medical equipment tracking
-
-## 🔧 API Endpoints
-
-### Authentication
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| POST | `/api/auth/register` | Create a new user |
-| POST | `/api/auth/login` | User login |
-
-### Hospitals
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/hospitals` | Get all hospitals |
-| GET | `/api/hospitals/{hospital_id}` | Get specific hospital |
-| POST | `/api/hospitals` | Create new hospital |
-| PUT | `/api/hospitals/{hospital_id}` | Update hospital information |
-| DELETE | `/api/hospitals/{hospital_id}` | Delete hospital |
-
-### Patients
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/patients` | Get all patients |
-| GET | `/api/patients/{patient_id}` | Get specific patient |
-| POST | `/api/patients` | Register new patient |
-| PUT | `/api/patients/{patient_id}` | Update patient information |
-| DELETE | `/api/patients/{patient_id}` | Delete patient |
-
-### Appointments
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/appointments` | Get all appointments |
-| GET | `/api/appointments/{appointment_id}` | Get specific appointment |
-| POST | `/api/appointments` | Create new appointment |
-| PUT | `/api/appointments/{appointment_id}` | Update appointment information |
-| DELETE | `/api/appointments/{appointment_id}` | Delete appointment |
-
-### Surgeries
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/surgeries` | Get all surgeries |
-| GET | `/api/surgeries/{surgery_id}` | Get specific surgery |
-| POST | `/api/surgeries` | Create new surgery |
-| PUT | `/api/surgeries/{surgery_id}` | Update surgery information |
-| DELETE | `/api/surgeries/{surgery_id}` | Delete surgery |
-
-### Staff
-| HTTP Method | Endpoint | Description |
-|------------|----------|-------------|
-| GET | `/api/staff` | Get all staff members |
-| GET | `/api/staff/{staff_id}` | Get specific staff member |
-| POST | `/api/staff` | Add new staff member |
-| PUT | `/api/staff/{staff_id}` | Update staff information |
-| DELETE | `/api/staff/{staff_id}` | Delete staff member |
-
-### Other Endpoints
-- **Rooms**: `/api/rooms`
-- **Medications**: `/api/medications`
-- **Insurance**: `/api/insurance`
-- **Visits**: `/api/visits`
-- **Prescriptions**: `/api/prescriptions`
-- **Shifts**: `/api/shifts`
-- **Feedback**: `/api/feedback`
-- **Complaints**: `/api/complaints`
-- **Equipment**: `/api/equipment`
-- **Tests**: `/api/tests`
-- **Treatments**: `/api/treatments`
-- **Departments**: `/api/departments`
-- **Analytics**: `/api/analytics`
-- **Reports**: `/api/reports`
-
-**Swagger Documentation**: You can access the complete API documentation at [Swagger](http://localhost:3000/api-docs) on your local environment.
-
-## 📁 Project Structure
-
-```
-hospital/
-├── client/                 # Frontend (Next.js)
-│   ├── app/               # Next.js app directory
-│   │   ├── dashboard/     # Dashboard pages
-│   │   ├── login/         # Login page
-│   │   └── layout.tsx     # Main layout
-│   ├── components/        # React components
-│   ├── config/           # Configuration files
-│   ├── contexts/         # React contexts
-│   ├── lib/              # Helper functions
-│   ├── locales/          # Language files
-│   ├── styles/           # CSS files
-│   └── types/            # TypeScript types
-├── server/               # Backend (Node.js)
-│   ├── src/
-│   │   ├── Controllers/  # Business logic controllers
-│   │   ├── Routes/       # API endpoint routes
-│   │   └── Modules/      # Helper modules
-│   │       └── Database/ # MongoDB models and connection
-│   ├── scripts/          # Database scripts
-│   └── app.js           # Main application file
-└── README.MD            # This file
-```
-
-## 🌍 Environment Variables
-
-### Backend (.env)
-| Variable Name | Description | Example Value |
-|---------------|-------------|---------------|
-| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/hospital_management` |
-| `HOST` | Express server host address | `localhost` |
-| `PORT` | Express server port | `3000` |
-| `JWT_SECRET` | JWT signature key | `your-secret-key` |
-
-### Frontend (.env.local)
-| Variable Name | Description | Example Value |
-|---------------|-------------|---------------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:3000/api` |
-
-## 🗄️ Database Setup
-
-### Automatic Setup
-To automatically populate the database with sample data:
+To explore the app with realistic data (patients, appointments, lab results, vitals, staff and more):
 
 ```bash
 cd server
-npm run seed
+npm run seed-demo            # add demo data
+npm run seed-demo -- --clean # remove it again
 ```
 
-### Manual Setup
-The application will automatically create the MongoDB database and collections when it first connects.
+Everything the seeder creates is tagged, so removing it leaves your own data alone.
 
-## 🤝 Contributing
+### Environment variables
 
-1. Fork this repository
-2. Create a new branch: `git checkout -b feature/new-feature`
-3. Make your changes and commit them: `git commit -m 'Add new feature'`
-4. Push your branch: `git push origin feature/new-feature`
-5. Open a Pull Request
+| Server | Description |
+|--------|-------------|
+| `MONGODB_URI` | MongoDB connection string |
+| `JWT_SECRET` | Key used to sign tokens (required) |
+| `PORT`, `HOST` | Where the API listens |
+| `CORS_ORIGINS` | Comma-separated frontend origins |
+| `SEED_*_PASSWORD` | Optional passwords for `npm run create-users` |
+| `DNS_SERVERS` | Optional, if `mongodb+srv` lookups fail locally |
 
-## 📝 License
+| Client | Description |
+|--------|-------------|
+| `NEXT_PUBLIC_API_URL` | API base URL, for example `http://localhost:3000/api` |
 
-This project is licensed under the MIT License.
+## How multiple hospitals work
 
-## 📞 Contact
+Every request carries the hospital you are working in (`X-Hospital-Id`). The server scopes all reads and writes to it, so each hospital has its own patients, staff, rooms and records without every endpoint having to know about it. Administrators can also look at all hospitals together, read-only. Data created before hospitals existed belongs to the default hospital.
 
-If you encounter any issues or have suggestions, feel free to reach out to the developers:
+## API
 
-![Emirhan](https://lantern.rest/api/v1/users/937316083533230110?svg=1)
+All routes live under `/api` and need a bearer token, except `/api/auth/login`. Interactive documentation is available at `/api-docs` while the server runs.
 
-## 🙏 Acknowledgments
+| Area | Routes |
+|------|--------|
+| Auth | `/auth/login`, `/auth/me`, `/auth/password` |
+| Patients | `/patients`, `/patients/:id/overview`, `/patient-records/:patientId/:type` |
+| Clinical | `/appointments`, `/visits`, `/tests`, `/treatments`, `/prescriptions`, `/surgeries` |
+| Hospital | `/staff`, `/departments`, `/rooms`, `/shifts`, `/hospitals` |
+| Inventory | `/medications`, `/equipment`, `/blood-bank` |
+| Operations | `/billing`, `/maintenance`, `/incidents`, `/ambulances` |
+| Admin | `/access/*` (roles, permissions, audit), `/reports/*`, `/dashboard/*` |
 
-This project was developed using the following open-source projects:
+## Project structure
 
-- [Next.js](https://nextjs.org/)
-- [HeroUI](https://heroui.com/)
-- [Express.js](https://expressjs.com/)
-- [MongoDB](https://www.mongodb.com/)
-- [Mongoose](https://mongoosejs.com/)
-- [Tailwind CSS](https://tailwindcss.com/)
+```
+HospitalProject/
+├── client/                 Next.js app
+│   ├── app/                Pages (dashboard, login)
+│   ├── components/         Shared UI (patient drawer, charts, switcher)
+│   ├── contexts/           Auth, language, hospital
+│   ├── lib/                API client, helpers, lab panels, report text
+│   └── locales/            English and Turkish strings
+├── server/                 Express API
+│   ├── src/Controllers/    Request handlers and the report engine
+│   ├── src/Routes/         API routes
+│   ├── src/Modules/        Database models, permissions, hospital scoping
+│   └── scripts/            Seed and maintenance scripts
+└── docs/screenshots/       Images used in this README
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a branch: `git checkout -b feature/your-feature`
+3. Commit your changes and push the branch
+4. Open a pull request
+
+## License
+
+MIT
+
+## Built with
+
+[Next.js](https://nextjs.org/), [HeroUI](https://heroui.com/), [Express](https://expressjs.com/), [MongoDB](https://www.mongodb.com/), [Mongoose](https://mongoosejs.com/), [Tailwind CSS](https://tailwindcss.com/)

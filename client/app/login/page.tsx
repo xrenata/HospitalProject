@@ -1,382 +1,196 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Card, CardBody, Button, Input, Progress, Chip, Avatar,
-  Divider, Tab, Tabs, Modal, ModalContent, ModalHeader, 
-  ModalBody, ModalFooter, useDisclosure, Code, Badge
-} from '@heroui/react';
-import { 
-  Eye, EyeOff, User, Lock, Shield, LogIn,
-  Sparkles, CheckCircle, Calendar, TrendingUp,
-  Globe, Monitor, Smartphone, Wifi, WifiOff, Sun, Moon, Clock, Users, Clipboard
-} from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useI18n } from '@/contexts/I18nContext';
-import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
-import { useTheme } from 'next-themes';
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import toast from "react-hot-toast";
+import { Button, Input } from "@heroui/react";
+import { Eye, EyeOff, Lock, LogIn, User } from "lucide-react";
+
+import { useAuth } from "@/contexts/AuthContext";
+import { useI18n } from "@/contexts/I18nContext";
+import SideRays from "@/components/SideRays";
+
+const inputClassNames = {
+  inputWrapper:
+    "h-11 rounded-xl bg-[#eef2f5] shadow-none data-[hover=true]:bg-[#e6ecf0] " +
+    "group-data-[focus=true]:bg-[#e6ecf0] dark:bg-white/10 dark:data-[hover=true]:bg-white/15 " +
+    "dark:group-data-[focus=true]:bg-white/15",
+  input: "text-[15px]",
+};
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const { t } = useI18n();
+  const { t, language, setLanguage } = useI18n();
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
-  
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isVisible, setIsVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
 
-  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Modal states
-  const { isOpen: isFeaturesOpen, onOpen: onFeaturesOpen, onClose: onFeaturesClose } = useDisclosure();
-
-
-
-
-
-  useEffect(() => {
-    setMounted(true);
-    setCurrentTime(new Date());
-    
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    // Make background cover full screen
-    document.body.style.overflow = 'hidden';
-    document.body.style.height = '100vh';
-    document.body.style.width = '100vw';
-    document.body.style.margin = '0';
-    document.body.style.padding = '0';
-    document.documentElement.style.overflow = 'hidden';
-    document.documentElement.style.height = '100vh';
-    document.documentElement.style.width = '100vw';
-    document.documentElement.style.margin = '0';
-    document.documentElement.style.padding = '0';
-
-    return () => {
-      clearInterval(timer);
-      // Restore original styles on cleanup
-      document.body.style.overflow = '';
-      document.body.style.height = '';
-      document.body.style.width = '';
-      document.body.style.margin = '';
-      document.body.style.padding = '';
-      document.documentElement.style.overflow = '';
-      document.documentElement.style.height = '';
-      document.documentElement.style.width = '';
-      document.documentElement.style.margin = '';
-      document.documentElement.style.padding = '';
-    };
-  }, []);
-
-  const toggleVisibility = () => setIsVisible(!isVisible);
+  useEffect(() => setMounted(true), []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!username.trim() || !password.trim()) {
-      toast.error('Lütfen tüm alanları doldurun');
+
+    if (!username.trim() || !password) {
+      toast.error(t("login.fill_all"));
+
       return;
     }
 
     setIsLoading(true);
-    
     const success = await login(username, password);
-    
+
     if (success) {
-      toast.success('Giriş başarılı! Yönlendiriliyorsunuz...');
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
+      router.push("/dashboard");
     } else {
-      toast.error('Hatalı kullanıcı adı veya şifre! Lütfen bilgilerinizi kontrol edin.');
+      toast.error(t("login.error"));
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
-  };
-
-
-
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
-
-  const formatTime = (date: Date | null) => {
-    if (!date) return '--:--:--';
-    return date.toLocaleTimeString('tr-TR', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
-    });
   };
 
   return (
-    <div className="fixed inset-0 w-screen h-screen bg-gradient-to-br from-background via-background to-primary-50 dark:from-background dark:via-gray-900 dark:to-gray-800 overflow-hidden flex items-center justify-center p-4">
-      {/* Theme Switch */}
-      <div className="absolute top-4 right-4 z-20">
-        {mounted && (
+    <div className="fixed inset-0 flex flex-col overflow-y-auto bg-gradient-to-b from-[#86c2ea] via-[#bfe0f4] to-[#f3f9fd] dark:from-[#09182a] dark:via-[#10283f] dark:to-[#1b3a52]">
+      {/* Clouds */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 overflow-hidden">
+        <div className="absolute bottom-0 -left-24 h-72 w-[30rem] rounded-full bg-white blur-2xl dark:bg-[#5b86a8]/30" />
+        <div className="absolute -bottom-10 left-1/4 h-80 w-[40rem] rounded-full bg-white blur-3xl dark:bg-[#6b95b6]/30" />
+        <div className="absolute bottom-0 -right-10 h-72 w-[32rem] rounded-full bg-white blur-2xl dark:bg-[#5b86a8]/30" />
+        <div className="absolute bottom-36 right-1/4 h-32 w-80 rounded-full bg-white/70 blur-2xl dark:bg-[#5b86a8]/20" />
+        <div className="absolute bottom-44 left-10 h-28 w-72 rounded-full bg-white/60 blur-2xl dark:bg-[#5b86a8]/20" />
+      </div>
+
+      {/* Light rays */}
+      {mounted && (
+        <SideRays
+          className="!absolute inset-0"
+          density={5}
+          falloff={1.4}
+          intensity={resolvedTheme === "dark" ? 1.4 : 2.6}
+          lightMode={resolvedTheme !== "dark"}
+          origin="top-right"
+          rayColor1="#FFC46B"
+          rayColor2="#7fb4ff"
+          spread={2}
+        />
+      )}
+
+      <header className="relative z-10 flex items-center justify-between px-6 py-5 sm:px-16">
+        <div className="flex items-center gap-2.5">
+          <span
+            aria-hidden
+            className="grid h-8 w-8 place-items-center rounded-lg bg-[#14181f] text-white"
+         >
+            <svg fill="none" height="15" viewBox="0 0 16 16" width="15">
+              <path
+                d="M8 2v12M2 8h12"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="2.25"
+              />
+            </svg>
+          </span>
+          <span className="text-[15px] font-semibold text-[#14181f] dark:text-white">
+            {t("login.eyebrow")}
+          </span>
+        </div>
+        <div className="flex gap-1 text-[#14181f] dark:text-white">
           <Button
-            isIconOnly
-            variant="flat"
-            className="bg-background/70 backdrop-blur-sm border border-divider hover:bg-background/90"
-            onPress={toggleTheme}
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? (
-              <Sun className="h-4 w-4 text-foreground" />
-            ) : (
-              <Moon className="h-4 w-4 text-foreground" />
-            )}
+            className="text-inherit"
+            size="sm"
+            variant="light"
+            onPress={() => setLanguage(language === "tr" ? "en" : "tr")}
+         >
+            {language === "tr" ? "EN" : "TR"}
           </Button>
-        )}
-      </div>
-      
-      {/* Elegant background pattern */}
-      <div className="absolute inset-0">
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-blue-500/8 rounded-full animate-pulse"></div>
-        <div className="absolute bottom-1/3 right-1/4 w-24 h-24 bg-purple-500/8 rounded-full animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 right-1/3 w-16 h-16 bg-cyan-500/8 rounded-full animate-pulse delay-2000"></div>
-        {/* Grid pattern overlay */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-100/20 to-purple-100/20 dark:from-blue-900/20 dark:to-purple-900/20"></div>
-        </div>
-      </div>
-
-      {/* Main Content Container */}
-      <div className="relative z-10 w-full max-w-sm">
-        {/* System Time Display */}
-        <div className="text-center mb-8">
-          <div className="mb-4">
-            <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg mb-4 ring-4 ring-blue-100 dark:ring-blue-900">
-              <Clock className="h-10 w-10 text-white" />
-            </div>
-            <h1 className="text-xl font-bold text-foreground mb-2">
-              Hospital Management System
-            </h1>
-            <p className="text-foreground/70 text-sm mb-4">
-              Sistem Zamanı
-            </p>
-            <div className="text-center">
-              <p className="font-mono text-3xl font-bold text-foreground mb-1">{formatTime(currentTime)}</p>
-              <p className="text-sm text-foreground/70">
-                {currentTime ? currentTime.toLocaleDateString('tr-TR', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                }) : '--'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Login Card */}
-        <Card className="bg-background/90 backdrop-blur-sm border border-divider shadow-xl">
-          <CardBody className="p-6">
-            {/* Header */}
-            <div className="text-center mb-6">
-              <div className="relative mb-4">
-                <div className="w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto shadow-md">
-                  <LogIn className="h-7 w-7 text-white" />
-                </div>
-              </div>
-              
-              <h2 className="text-lg font-bold text-foreground mb-1">
-                Hoş Geldiniz
-              </h2>
-              <p className="text-foreground/70 text-sm">
-                Hesabınıza giriş yapın
-              </p>
-            </div>
-
-            {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                type="text"
-                label="Kullanıcı Adı"
-                placeholder="Kullanıcı adınızı girin"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                variant="bordered"
-                size="md"
-                isRequired
-                startContent={<User className="h-4 w-4 text-foreground/50" />}
-                classNames={{
-                  input: "text-foreground bg-background text-sm placeholder:text-foreground/40",
-                  label: "text-foreground/70 text-sm",
-                  inputWrapper: "border-divider hover:border-foreground/40 focus-within:border-primary bg-background",
-                }}
-              />
-
-              <Input
-                label="Şifre"
-                placeholder="Şifrenizi girin"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                variant="bordered"
-                size="md"
-                isRequired
-                startContent={<Lock className="h-4 w-4 text-foreground/50" />}
-                endContent={
-                  <button
-                    className="focus:outline-none hover:text-primary transition-colors text-foreground/50"
-                    type="button"
-                    onClick={toggleVisibility}
-                  >
-                    {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                }
-                type={isVisible ? "text" : "password"}
-                classNames={{
-                  input: "text-foreground bg-background text-sm placeholder:text-foreground/40",
-                  label: "text-foreground/70 text-sm",
-                  inputWrapper: "border-divider hover:border-foreground/40 focus-within:border-primary bg-background",
-                }}
-              />
-
-              <Button
-                type="submit"
-                color="primary"
-                size="md"
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg hover:shadow-xl transition-all duration-200"
-                isLoading={isLoading}
-                disabled={isLoading}
-                startContent={!isLoading && <LogIn className="h-4 w-4" />}
-              >
-                {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
-              </Button>
-            </form>
-
-
-
-            {/* Progress for demo */}
-            {isLoading && (
-              <Progress
-                size="sm"
-                isIndeterminate
-                color="primary"
-                className="mt-3"
-                label="Sisteme bağlanılıyor..."
-              />
-            )}
-          </CardBody>
-        </Card>
-
-        {/* Footer */}
-        <div className="text-center mt-4 space-y-1">
-          <p className="text-xs text-foreground/60">
-            {t('login.copyright')}
-          </p>
-          <div className="flex items-center justify-center space-x-3 text-xs text-foreground/50">
-            <button className="hover:text-primary transition-colors">{t('login.privacy')}</button>
-            <span>•</span>
-            <button className="hover:text-primary transition-colors">Kullanım Şartları</button>
-            <span>•</span>
-            <button className="hover:text-primary transition-colors">{t('login.support')}</button>
-          </div>
-        </div>
-      </div>
-
-
-
-      {/* Features Modal */}
-      <Modal 
-        isOpen={isFeaturesOpen} 
-        onClose={onFeaturesClose}
-        size="3xl"
-        scrollBehavior="inside"
-        classNames={{
-          base: "bg-background border border-divider",
-          body: "bg-background",
-          header: "bg-background border-b border-divider",
-          footer: "bg-background border-t border-divider",
-        }}
-      >
-        <ModalContent className="bg-background text-foreground">
-          <ModalHeader>
-            <div className="flex items-center space-x-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <span className="text-foreground">{t('login.system_features')}</span>
-            </div>
-          </ModalHeader>
-          <ModalBody>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                {
-                  icon: Users,
-                  title: 'Hasta Yönetimi',
-                  description: 'Kapsamlı hasta kayıt ve takip sistemi',
-                  features: ['Hasta kayıtları', 'Tıbbi geçmiş', 'Alerji takibi', 'Vital signs']
-                },
-                {
-                  icon: Calendar,
-                  title: 'Randevu Sistemi',
-                  description: 'Akıllı randevu planlama ve yönetimi',
-                  features: ['Online randevu', 'Takvim entegrasyonu', 'SMS hatırlatma', 'Bekleme listesi']
-                },
-                {
-                  icon: Clipboard,
-                  title: 'Tedavi Takibi',
-                  description: 'Detaylı tedavi ve ilaç yönetimi',
-                  features: ['Reçete yönetimi', 'Doktor notları', 'Lab sonuçları', 'Görüntüleme']
-                },
-                {
-                  icon: TrendingUp,
-                  title: 'Analitik & Raporlar',
-                  description: 'Gelişmiş raporlama ve analiz araçları',
-                  features: ['İstatistikler', 'Finansal raporlar', 'Performans analizi', 'Tahminleme']
-                },
-                {
-                  icon: Shield,
-                  title: 'Güvenlik',
-                  description: 'Üst düzey veri güvenliği ve gizlilik',
-                  features: ['Şifreleme', 'Yetki yönetimi', 'Audit log', 'GDPR uyumluluk']
-                },
-                {
-                  icon: Globe,
-                  title: 'Multi-Platform',
-                  description: 'Web, mobil ve tablet desteği',
-                  features: ['Responsive tasarım', 'Offline çalışma', 'Senkronizasyon', 'PWA desteği']
-                }
-              ].map((feature, index) => (
-                <Card key={index} className="hover:shadow-lg transition-shadow bg-content1 border border-divider">
-                  <CardBody className="p-4">
-                    <div className="flex items-start space-x-3">
-                      <div className="p-2 bg-primary/20 rounded-lg">
-                        <feature.icon className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold mb-1 text-foreground">{feature.title}</h3>
-                        <p className="text-sm text-foreground/70 mb-3">
-                          {feature.description}
-                        </p>
-                        <div className="space-y-1">
-                          {feature.features.map((item, i) => (
-                            <div key={i} className="flex items-center space-x-2 text-xs">
-                              <CheckCircle className="h-3 w-3 text-success" />
-                              <span className="text-foreground/70">{item}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardBody>
-                </Card>
-              ))}
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button color="primary" onPress={onFeaturesClose}>
-              {t('login.understood')}
+          {mounted && (
+            <Button
+              className="text-inherit"
+              size="sm"
+              variant="light"
+              onPress={() =>
+                setTheme(resolvedTheme === "dark" ? "light" : "dark")
+              }
+           >
+              {resolvedTheme === "dark" ? "Light" : "Dark"}
             </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+          )}
+        </div>
+      </header>
+
+      <main className="relative z-10 flex flex-1 items-center justify-center px-6 py-8">
+        <form
+          noValidate
+          className="w-full max-w-[22.5rem] rounded-[1.75rem] border border-white/70 bg-gradient-to-b from-[#c6eefa] via-white to-white p-7 shadow-[0_20px_60px_-20px_rgba(40,90,140,0.35)] dark:border-white/10 dark:from-[#1f4a63] dark:via-[#12222f] dark:to-[#101c27]"
+          onSubmit={handleSubmit}
+       >
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white shadow-[0_6px_16px_-4px_rgba(30,70,110,0.3)] dark:bg-white/10">
+            <LogIn className="h-5 w-5 text-[#14181f] dark:text-white" />
+          </div>
+
+          <h1 className="mt-5 text-center text-xl font-semibold text-[#14181f] dark:text-white">
+            {t("login.welcome")}
+          </h1>
+          <p className="mx-auto mt-1.5 max-w-[18rem] text-balance text-center text-sm leading-snug text-[#6b7580] dark:text-white/60">
+            {t("login.subtitle")}
+          </p>
+
+          <div className="mt-7 flex flex-col gap-3">
+            <Input
+              aria-label={t("auth.username")}
+              autoComplete="username"
+              classNames={inputClassNames}
+              placeholder={t("auth.username")}
+              startContent={<User className="h-4 w-4 text-[#7c8792]" />}
+              value={username}
+              variant="flat"
+              onValueChange={setUsername}
+            />
+
+            <Input
+              aria-label={t("auth.password")}
+              autoComplete="current-password"
+              classNames={inputClassNames}
+              endContent={
+                <button
+                  aria-label={showPassword ? t("login.hide") : t("login.show")}
+                  className="text-[#7c8792] hover:text-[#14181f] dark:hover:text-white"
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+               >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              }
+              placeholder={t("auth.password")}
+              startContent={<Lock className="h-4 w-4 text-[#7c8792]" />}
+              type={showPassword ? "text" : "password"}
+              value={password}
+              variant="flat"
+              onValueChange={setPassword}
+            />
+
+            <Button
+              className="mt-3 h-11 rounded-xl bg-gradient-to-b from-[#2d3139] to-[#0e1015] text-[15px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_6px_14px_-6px_rgba(10,14,20,0.6)] dark:from-white dark:to-[#dfe6ec] dark:text-[#0e1015]"
+              isLoading={isLoading}
+              type="submit"
+           >
+              {t("login.submit")}
+            </Button>
+          </div>
+        </form>
+      </main>
+
+      <footer className="relative z-10 px-6 py-4 text-center text-xs text-[#4a5864] dark:text-white/50">
+        {t("login.copyright")}
+      </footer>
     </div>
   );
 }

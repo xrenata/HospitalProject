@@ -1,630 +1,433 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from "react";
+import { Button, Card, CardBody, Skeleton, Tab, Tabs, Tooltip } from "@heroui/react";
 import {
-  Card, CardBody, CardHeader, Button, Input, Select, SelectItem,
-  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  useDisclosure, Spinner, Chip, Divider, Checkbox, CheckboxGroup,
-  Textarea, Progress, Tabs, Tab
-} from '@heroui/react';
-import {
-  FileText, Download, Calendar, Filter, Settings, Eye, Share2,
-  Clock, CheckCircle, AlertCircle, TrendingUp, Users, DollarSign,
-  Activity, Package, Stethoscope, Building, RefreshCw, Play,
-  FileSpreadsheet, Mail, Printer
-} from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useI18n } from '@/contexts/I18nContext';
-import { reportsAPI, departmentsAPI } from '@/lib/api';
-import { formatDate, formatCurrency } from '@/lib/utils';
+  Activity, Building, Calendar, DollarSign, Download, FlaskConical, History, Package, Play, Printer, Save, Star,
+  Stethoscope, Trash2, Users,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
-interface ReportTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  fields: string[];
-  requiredPermission: number;
-}
+import DateField from "@/components/DateField";
+import { BarChart, Donut, TONE, type Segment, type Tone } from "@/components/charts";
+import { useValueLabel } from "@/components/Chip";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { useI18n } from "@/contexts/I18nContext";
+import api from "@/lib/api";
 
-interface Department {
-  _id: string;
-  name: string;
-}
+interface Template { id: string; icon: string; category: string; needs: string; allowed: boolean }
+interface Kpi { key: string; label: string; value: number; format?: string }
+interface Point { label: string; value: number; raw?: string; [k: string]: any }
+interface Column { key: string; label: string; format?: string }
+interface Section { key: string; title: string; type: "line" | "bar" | "donut" | "table"; format?: string; data?: Point[]; columns?: Column[]; rows?: any[] }
+interface Report { id?: string | null; meta: { id: string; from: string; to: string; generatedAt: string }; kpis: Kpi[]; sections: Section[] }
+interface HistoryRow { _id: string; template: string; from: string; to: string; generatedByName?: string; createdAt: string }
 
-interface GeneratedReport {
-  id: string;
-  name: string;
-  type: string;
-  generatedAt: string;
-  status: 'completed' | 'processing' | 'failed';
-  size?: string;
-  downloadUrl?: string;
-}
+const ICONS: Record<string, React.ElementType> = {
+  users: Users, calendar: Calendar, flask: FlaskConical, dollar: DollarSign, stethoscope: Stethoscope,
+  building: Building, package: Package, star: Star,
+};
+const TONES: Tone[] = ["primary", "success", "warning", "danger", "default"];
+
+const TEXT = {
+  en: {
+    title: "Reports", subtitle: "Pick a report, choose a period and read the numbers. Results can be saved, exported or printed.",
+    templates: "Report types", history: "Saved reports", run: "Create report", save: "Save to history", saved: "Saved", period: "Period",
+    from: "From", to: "To", d7: "7 days", d30: "30 days", d90: "90 days", ytd: "This year", d365: "12 months",
+    csv: "Download CSV", print: "Print", none: "No saved reports yet", open: "Open", failed: "Could not create the report",
+    pick: "Pick a report type to begin", locked: "You don't have access to this report", generated: "Generated", by: "by",
+    empty: "No data for this period", delete: "Delete", delete_q: "Delete this saved report?", deleted: "Deleted", loading: "Loading…",
+    total: "Total",
+    t: {
+      patients: ["Patients", "Who is being treated: new registrations, age, gender, blood type, insurance."],
+      appointments: ["Appointments", "Volume, completion and no-shows, busiest doctors and hours."],
+      clinical: ["Clinical activity", "Lab tests, abnormal results, prescriptions and vital readings."],
+      financial: ["Financial", "Treatment revenue by day and type, visit charges and insurance cover."],
+      staff: ["Staff", "Headcount by job and department, doctor workload, hiring."],
+      departments: ["Departments", "Staff, rooms, capacity and recent activity per department."],
+      inventory: ["Inventory & equipment", "Stock value, low stock, expiring medication and equipment status."],
+      quality: ["Quality", "Complaints, how fast they are resolved, and patient ratings."],
+    } as Record<string, string[]>,
+    cat: { clinical: "Clinical", finance: "Finance", operations: "Operations", quality: "Quality" } as Record<string, string>,
+  },
+  tr: {
+    title: "Raporlar", subtitle: "Bir rapor seçin, dönemi belirleyin ve sayıları okuyun. Sonuçlar kaydedilebilir, dışa aktarılabilir veya yazdırılabilir.",
+    templates: "Rapor türleri", history: "Kayıtlı raporlar", run: "Raporu oluştur", save: "Geçmişe kaydet", saved: "Kaydedildi", period: "Dönem",
+    from: "Başlangıç", to: "Bitiş", d7: "7 gün", d30: "30 gün", d90: "90 gün", ytd: "Bu yıl", d365: "12 ay",
+    csv: "CSV indir", print: "Yazdır", none: "Henüz kayıtlı rapor yok", open: "Aç", failed: "Rapor oluşturulamadı",
+    pick: "Başlamak için bir rapor türü seçin", locked: "Bu rapora erişiminiz yok", generated: "Oluşturuldu", by: "—",
+    empty: "Bu dönem için veri yok", delete: "Sil", delete_q: "Bu kayıtlı rapor silinsin mi?", deleted: "Silindi", loading: "Yükleniyor…",
+    total: "Toplam",
+    t: {
+      patients: ["Hastalar", "Kimler tedavi görüyor: yeni kayıtlar, yaş, cinsiyet, kan grubu, sigorta."],
+      appointments: ["Randevular", "Yoğunluk, tamamlanma ve gelmeme, en yoğun hekim ve saatler."],
+      clinical: ["Klinik faaliyet", "Laboratuvar testleri, referans dışı sonuçlar, reçeteler ve vital ölçümler."],
+      financial: ["Mali durum", "Güne ve türe göre tedavi geliri, ziyaret ücretleri ve sigorta teminatı."],
+      staff: ["Personel", "Unvan ve departmana göre kadro, hekim iş yükü, işe alım."],
+      departments: ["Departmanlar", "Departman başına personel, oda, kapasite ve son dönem faaliyeti."],
+      inventory: ["Stok ve ekipman", "Stok değeri, azalan stok, süresi yaklaşan ilaçlar ve ekipman durumu."],
+      quality: ["Kalite", "Şikayetler, çözülme hızı ve hasta puanları."],
+    } as Record<string, string[]>,
+    cat: { clinical: "Klinik", finance: "Mali", operations: "Operasyon", quality: "Kalite" } as Record<string, string>,
+  },
+};
+
+const iso = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const daysAgo = (n: number) => iso(new Date(Date.now() - n * 86400000));
 
 export default function ReportsPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
-  const [loading, setLoading] = useState(true);
-  const [templates, setTemplates] = useState<ReportTemplate[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
-  const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
-  
-  // Form states
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
-  const [selectedFields, setSelectedFields] = useState<string[]>([]);
-  const [reportName, setReportName] = useState('');
-  const [reportDescription, setReportDescription] = useState('');
-  const [autoSchedule, setAutoSchedule] = useState(false);
-  const [scheduleFrequency, setScheduleFrequency] = useState('monthly');
-  
-  // Modal states
-  const { isOpen: isGenerateOpen, onOpen: onGenerateOpen, onClose: onGenerateClose } = useDisclosure();
-  const { isOpen: isPreviewOpen, onOpen: onPreviewOpen, onClose: onPreviewClose } = useDisclosure();
-  const [generating, setGenerating] = useState(false);
-  const [previewData, setPreviewData] = useState<any>(null);
+  const { language } = useI18n();
+  const tx = TEXT[language === "tr" ? "tr" : "en"];
+  const locale = language === "tr" ? "tr-TR" : "en-US";
+  const label = useValueLabel();
+  const confirm = useConfirm();
 
-  useEffect(() => {
-    loadData();
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [tab, setTab] = useState("new");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [from, setFrom] = useState(daysAgo(29));
+  const [to, setTo] = useState(iso(new Date()));
+  const [preset, setPreset] = useState("d30");
+  const [report, setReport] = useState<Report | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
+
+  useEffect(() => { document.title = `${tx.title} · Hospital`; }, [tx.title]);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await api.get("/reports/history");
+      setHistory(res.data?.data || []);
+    } catch { /* the history is optional */ }
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  useEffect(() => {
+    api.get("/reports/templates").then((res) => setTemplates(res.data?.data || [])).catch(() => {});
+    loadHistory();
+  }, [loadHistory]);
+
+  const money = useCallback((n: number) => new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n), [locale]);
+  const fmt = useCallback((v: any, format?: string) => {
+    if (v === null || v === undefined || v === "") return "—";
+    if (format === "money") return money(Number(v));
+    if (format === "percent") return `${Number(v).toLocaleString(locale)}%`;
+    if (format === "date") return new Date(v).toLocaleDateString(locale);
+    if (typeof v === "number") return v.toLocaleString(locale, { maximumFractionDigits: 2 });
+
+    return String(v);
+  }, [locale, money]);
+
+  const applyPreset = (id: string) => {
+    setPreset(id);
+    const n = { d7: 6, d30: 29, d90: 89, d365: 364 }[id];
+    setTo(iso(new Date()));
+    if (n !== undefined) setFrom(daysAgo(n));
+    if (id === "ytd") setFrom(`${new Date().getFullYear()}-01-01`);
+  };
+
+  const run = async (save = false) => {
+    if (!selected) return;
+    setBusy(true);
     try {
-      const [templatesResponse, departmentsResponse] = await Promise.all([
-        reportsAPI.getTemplates(),
-        departmentsAPI.getAll({ limit: 1000 })
-      ]);
-
-      setTemplates(templatesResponse.data?.data || []);
-      setDepartments(departmentsResponse.data?.data || []);
-      
-      // Load saved reports from localStorage
-      const savedReports = localStorage.getItem('generatedReports');
-      if (savedReports) {
-        setGeneratedReports(JSON.parse(savedReports));
-      }
-    } catch (error) {
-      console.error('Failed to load data:', error);
-    } finally {
-      setLoading(false);
-    }
+      const res = await api.post("/reports/run", { template: selected, startDate: from, endDate: to, lang: language, save });
+      setReport(res.data.data);
+      setSavedId(res.data.data.id || null);
+      if (!save) setTimeout(() => document.getElementById("report-view")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+      if (save) { toast.success(tx.saved); loadHistory(); }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || tx.failed);
+    } finally { setBusy(false); }
   };
 
-  const handleGenerateReport = async () => {
-    if (!selectedTemplate || !startDate || !endDate) {
-      alert(t('reports.fill_required_fields'));
-      return;
-    }
-
-    setGenerating(true);
+  const openSaved = async (row: HistoryRow) => {
+    setBusy(true);
     try {
-      const reportData = {
-        startDate,
-        endDate,
-        ...(selectedDepartments.length > 0 && { departments: selectedDepartments }),
-        ...(selectedFields.length > 0 && { includeFields: selectedFields })
-      };
+      const res = await api.get(`/reports/history/${row._id}`);
+      setReport(res.data.data);
+      setSavedId(row._id);
+      setSelected(row.template);
+      setTab("new");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || tx.failed);
+    } finally { setBusy(false); }
+  };
 
-      let response;
-      switch (selectedTemplate.id) {
-        case 'patient-summary':
-          response = await reportsAPI.generatePatientReport(reportData);
-          break;
-        case 'appointment-analytics':
-          response = await reportsAPI.generateAppointmentReport(reportData);
-          break;
-        case 'financial-summary':
-          response = await reportsAPI.generateFinancialReport(reportData);
-          break;
-        case 'staff-performance':
-          response = await reportsAPI.generateStaffReport(reportData);
-          break;
-        case 'inventory-status':
-          response = await reportsAPI.generateInventoryReport();
-          break;
-        case 'comprehensive-monthly':
-          response = await reportsAPI.generateComprehensiveReport(reportData);
-          break;
-        default:
-          throw new Error(t('reports.invalid_report_type'));
-      }
-
-      // Create report entry
-      const newReport: GeneratedReport = {
-        id: Date.now().toString(),
-        name: reportName || selectedTemplate.name,
-        type: selectedTemplate.id,
-        generatedAt: new Date().toISOString(),
-        status: 'completed',
-        size: '2.4 MB' // Mock size
-      };
-
-      // Save to localStorage and state
-      const updatedReports = [...generatedReports, newReport];
-      setGeneratedReports(updatedReports);
-      localStorage.setItem('generatedReports', JSON.stringify(updatedReports));
-
-      // Store report data for preview
-      setPreviewData(response.data?.data);
-      
-      onGenerateClose();
-      alert(t('reports.report_generated_success'));
-    } catch (error) {
-      console.error('Failed to generate report:', error);
-      alert(t('reports.report_generation_error'));
-    } finally {
-      setGenerating(false);
+  const removeSaved = async (row: HistoryRow) => {
+    if (!(await confirm(tx.delete_q))) return;
+    try {
+      await api.delete(`/reports/history/${row._id}`);
+      toast.success(tx.deleted);
+      setHistory((h) => h.filter((x) => x._id !== row._id));
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || tx.failed);
     }
   };
 
-  const handlePreviewReport = (report: GeneratedReport) => {
-    // In a real app, you would fetch the actual report data
-    setPreviewData({
-      metadata: {
-        reportType: report.type,
-        generatedAt: report.generatedAt,
-        name: report.name
-      },
-      summary: t('reports.preview_sample_data')
+  const exportCsv = () => {
+    if (!report) return;
+    const rows: string[][] = [[tx.t[report.meta.id]?.[0] || report.meta.id, `${report.meta.from.slice(0, 10)} – ${report.meta.to.slice(0, 10)}`], []];
+    report.kpis.forEach((k) => rows.push([k.label, String(k.value)]));
+    report.sections.forEach((s) => {
+      rows.push([], [s.title]);
+      if (s.type === "table") {
+        rows.push((s.columns || []).map((c) => c.label));
+        (s.rows || []).forEach((r) => rows.push((s.columns || []).map((c) => String(r[c.key] ?? ""))));
+      } else {
+        (s.data || []).forEach((d) => rows.push([label(d.label), String(d.value)]));
+      }
     });
-    onPreviewOpen();
-  };
-
-  const handleDownloadReport = (report: GeneratedReport, format: 'json' | 'pdf' | 'excel') => {
-    // Mock download functionality
-    const blob = new Blob([JSON.stringify(previewData || {}, null, 2)], { 
-      type: format === 'json' ? 'application/json' : 'application/octet-stream' 
-    });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const csv = rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `${report.name}.${format === 'excel' ? 'xlsx' : format}`;
+    a.download = `report-${report.meta.id}-${iso(new Date())}.csv`;
     a.click();
-    window.URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
   };
 
-  const getTemplateIcon = (category: string) => {
-    switch (category) {
-      case 'patients': return <Users size={20} />;
-      case 'appointments': return <Calendar size={20} />;
-      case 'financial': return <DollarSign size={20} />;
-      case 'staff': return <Stethoscope size={20} />;
-      case 'inventory': return <Package size={20} />;
-      case 'departments': return <Building size={20} />;
-      case 'quality': return <Activity size={20} />;
-      case 'comprehensive': return <FileText size={20} />;
-      default: return <FileText size={20} />;
-    }
-  };
+  const nameOf = (id: string) => tx.t[id]?.[0] || id;
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'patients': return 'primary';
-      case 'appointments': return 'secondary';
-      case 'financial': return 'success';
-      case 'staff': return 'warning';
-      case 'inventory': return 'danger';
-      case 'departments': return 'default';
-      case 'quality': return 'primary';
-      case 'comprehensive': return 'secondary';
-      default: return 'default';
-    }
-  };
+  return (
+    <div className="mx-auto max-w-6xl space-y-6 print:max-w-none">
+      <div className="print:hidden">
+        <h1 className="text-2xl font-semibold tracking-tight">{tx.title}</h1>
+        <p className="mt-1 text-sm text-foreground-500">{tx.subtitle}</p>
+      </div>
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'success';
-      case 'processing': return 'warning';
-      case 'failed': return 'danger';
-      default: return 'default';
-    }
-  };
+      <Tabs aria-label={tx.title} className="print:hidden" selectedKey={tab} variant="underlined" onSelectionChange={(k) => { setTab(String(k)); if (k === "history") loadHistory(); }}>
+        <Tab key="new" title={<span className="flex items-center gap-2"><Activity size={15} />{tx.templates}</span>} />
+        <Tab key="history" title={<span className="flex items-center gap-2"><History size={15} />{tx.history}{history.length ? ` (${history.length})` : ""}</span>} />
+      </Tabs>
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return <CheckCircle size={16} />;
-      case 'processing': return <Clock size={16} />;
-      case 'failed': return <AlertCircle size={16} />;
-      default: return <Clock size={16} />;
-    }
-  };
+      {tab === "history" ? (
+        <Card shadow="none" className="border border-divider">
+          <CardBody className="p-0">
+            {history.length === 0 ? (
+              <p className="p-10 text-center text-sm text-foreground-500">{tx.none}</p>
+            ) : (
+              <ul className="divide-y divide-divider">
+                {history.map((h) => (
+                  <li key={h._id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{nameOf(h.template)}</p>
+                      <p className="text-xs text-foreground-500">
+                        {new Date(h.from).toLocaleDateString(locale)} – {new Date(h.to).toLocaleDateString(locale)} · {new Date(h.createdAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}{h.generatedByName ? ` · ${h.generatedByName}` : ""}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="flat" onPress={() => openSaved(h)}>{tx.open}</Button>
+                    <Tooltip content={tx.delete}>
+                      <Button isIconOnly aria-label={tx.delete} size="sm" variant="light" onPress={() => removeSaved(h)}><Trash2 size={15} /></Button>
+                    </Tooltip>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+      ) : (
+        <>
+          <div className="space-y-5 print:hidden">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {templates.map((t) => {
+                const Icon = ICONS[t.icon] || Activity;
+                const on = selected === t.id;
 
-  if (loading) {
+                return (
+                  <button
+                    key={t.id}
+                    className={`rounded-large border p-4 text-left transition-colors ${on ? "border-primary bg-primary/5" : "border-divider hover:bg-content2"} ${t.allowed ? "" : "cursor-not-allowed opacity-50"}`}
+                    disabled={!t.allowed}
+                    title={t.allowed ? undefined : tx.locked}
+                    type="button"
+                    onClick={() => { setSelected(t.id); setReport(null); setSavedId(null); }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <Icon className={on ? "text-primary" : "text-foreground-500"} size={18} />
+                      <span className="text-[11px] text-foreground-400">{tx.cat[t.category] || t.category}</span>
+                    </div>
+                    <p className="mt-3 text-sm font-medium">{tx.t[t.id]?.[0] || t.id}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-foreground-500">{tx.t[t.id]?.[1]}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {selected ? (
+            <Card shadow="none" className="border border-divider print:hidden">
+              <CardBody className="flex flex-col gap-4 lg:flex-row lg:items-end">
+                <div className="flex-1">
+                  <p className="mb-2 text-sm font-medium">{tx.period}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(["d7", "d30", "d90", "ytd", "d365"] as const).map((p) => (
+                      <button
+                        key={p}
+                        className={`rounded-full border px-3 py-1 text-xs transition-colors ${preset === p ? "border-primary bg-primary/10 text-primary" : "border-divider text-foreground-600 hover:bg-content2"}`}
+                        type="button"
+                        onClick={() => applyPreset(p)}
+                      >
+                        {tx[p]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 lg:w-96">
+                  <DateField label={tx.from} max={to} value={from} onValueChange={(v) => { setFrom(v); setPreset(""); }} />
+                  <DateField label={tx.to} min={from} value={to} onValueChange={(v) => { setTo(v); setPreset(""); }} />
+                </div>
+                <Button color="primary" isLoading={busy} startContent={!busy && <Play size={15} />} onPress={() => run(false)}>{tx.run}</Button>
+              </CardBody>
+            </Card>
+          ) : (
+            !report && <p className="rounded-large border border-dashed border-divider p-8 text-center text-sm text-foreground-500">{tx.pick}</p>
+          )}
+
+          {busy && !report && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-large" />)}
+            </div>
+          )}
+
+          {report && (
+            <ReportView
+              fmt={fmt}
+              label={label}
+              locale={locale}
+              report={report}
+              savedId={savedId}
+              title={nameOf(report.meta.id)}
+              tx={tx}
+              onCsv={exportCsv}
+              onPrint={() => window.print()}
+              onSave={() => run(true)}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ReportView({ report, title, tx, locale, fmt, label, savedId, onSave, onCsv, onPrint }: {
+  report: Report; title: string; tx: typeof TEXT.en; locale: string; fmt: (v: any, f?: string) => string; label: (v: string) => string;
+  savedId: string | null; onSave: () => void; onCsv: () => void; onPrint: () => void;
+}) {
+  const range = `${new Date(report.meta.from).toLocaleDateString(locale)} – ${new Date(report.meta.to).toLocaleDateString(locale)}`;
+
+  return (
+    <div className="space-y-4" id="report-view">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <p className="text-xs text-foreground-500">{range} · {tx.generated} {new Date(report.meta.generatedAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}</p>
+        </div>
+        <div className="flex gap-2 print:hidden">
+          {!savedId && <Button size="sm" startContent={<Save size={14} />} variant="flat" onPress={onSave}>{tx.save}</Button>}
+          <Button size="sm" startContent={<Download size={14} />} variant="flat" onPress={onCsv}>{tx.csv}</Button>
+          <Button size="sm" startContent={<Printer size={14} />} variant="flat" onPress={onPrint}>{tx.print}</Button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+        {report.kpis.map((k) => (
+          <Card key={k.key} shadow="none" className="border border-divider">
+            <CardBody className="gap-1 p-4">
+              <p className="text-xs text-foreground-500">{k.label}</p>
+              <p className="text-2xl font-semibold tabular-nums">{fmt(k.value, k.format)}</p>
+            </CardBody>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {report.sections.map((s) => (
+          <Card key={s.key} shadow="none" className={`border border-divider print:break-inside-avoid ${s.type === "table" || s.type === "line" ? "lg:col-span-2" : ""}`}>
+            <CardBody className="gap-4 p-5">
+              <p className="text-sm font-medium">{s.title}</p>
+              <SectionBody fmt={fmt} label={label} locale={locale} section={s} tx={tx} />
+            </CardBody>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SectionBody({ section: s, fmt, label, locale, tx }: { section: Section; fmt: (v: any, f?: string) => string; label: (v: string) => string; locale: string; tx: typeof TEXT.en }) {
+  const data = s.data || [];
+
+  if (s.type === "table") {
+    if (!s.rows?.length) return <p className="py-6 text-center text-sm text-foreground-500">{tx.empty}</p>;
+
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <Spinner size="lg" />
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-divider text-left text-xs text-foreground-500">
+              {s.columns!.map((c) => <th key={c.key} className={`py-2 pr-4 font-medium ${c.format ? "text-right" : ""}`}>{c.label}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {s.rows.map((r, i) => (
+              <tr key={i} className="border-b border-divider/60 last:border-0">
+                {s.columns!.map((c) => <td key={c.key} className={`py-2 pr-4 ${c.format ? "text-right tabular-nums" : ""}`}>{c.format ? fmt(r[c.key], c.format) : label(String(r[c.key] ?? "—"))}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {t('reports.title')}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {t('reports.subtitle')}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="flat"
-            onPress={loadData}
-            startContent={<RefreshCw size={16} />}
-          >
-            {t('reports.refresh')}
-          </Button>
-          <Button
-            color="primary"
-            onPress={() => {
-              setSelectedTemplate(null);
-              setStartDate('');
-              setEndDate('');
-              setSelectedDepartments([]);
-              setSelectedFields([]);
-              setReportName('');
-              setReportDescription('');
-              onGenerateOpen();
-            }}
-            startContent={<FileText size={16} />}
-          >
-            {t('reports.new_report')}
-          </Button>
-        </div>
+  if (!data.length || data.every((d) => !d.value)) return <p className="py-6 text-center text-sm text-foreground-500">{tx.empty}</p>;
+
+  if (s.type === "line") {
+    return (
+      <div>
+        <BarChart data={data.map((d) => d.value)} labels={data.map((d) => d.label)} locale={locale} />
+        <p className="mt-2 text-xs text-foreground-500">{tx.total}: <span className="font-medium text-foreground tabular-nums">{fmt(data.reduce((a, d) => a + d.value, 0), s.format)}</span></p>
       </div>
+    );
+  }
 
-      <Tabs defaultSelectedKey="templates">
-        <Tab key="templates" title={t('reports.report_templates')}>
-          {/* Report Templates Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {templates.map((template) => (
-              <Card 
-                key={template.id} 
-                isPressable 
-                onPress={() => {
-                  setSelectedTemplate(template);
-                  setReportName(template.name);
-                  onGenerateOpen();
-                }}
-                className="hover:shadow-lg transition-shadow"
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between w-full">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg bg-${getCategoryColor(template.category)}-100 dark:bg-${getCategoryColor(template.category)}-900/20`}>
-                        {getTemplateIcon(template.category)}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-sm">{template.name}</h3>
-                        <Chip 
-                          size="sm" 
-                          color={getCategoryColor(template.category) as any}
-                          variant="flat"
-                        >
-                          {template.category}
-                        </Chip>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardBody className="pt-0">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    {template.description}
-                  </p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">
-                      {t('reports.fields_count', { count: template.fields.length.toString() })}
-                    </span>
-                    <div className="flex items-center gap-2 text-primary">
-                      <Play size={14} />
-                      <span className="text-sm font-medium">{t('reports.create')}</span>
-                    </div>
-                  </div>
-                </CardBody>
-              </Card>
-            ))}
+  if (s.type === "donut") {
+    const segments: Segment[] = data.map((d, i) => ({ label: label(d.label), value: d.value, tone: TONES[i % TONES.length] }));
+    const total = data.reduce((a, d) => a + d.value, 0);
+
+    return (
+      <div className="flex flex-wrap items-center gap-6">
+        <Donut segments={segments} size={140}>
+          <span className="text-lg font-semibold tabular-nums">{fmt(total, s.format)}</span>
+        </Donut>
+        <ul className="min-w-[12rem] flex-1 space-y-2">
+          {segments.map((x) => (
+            <li key={x.label} className="flex items-center gap-2 text-sm">
+              <span className={`h-2 w-2 shrink-0 rounded-full ${TONE[x.tone].bg}`} />
+              <span className="flex-1 truncate">{x.label}</span>
+              <span className="tabular-nums text-foreground-600">{fmt(x.value, s.format)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  const max = Math.max(...data.map((d) => d.value), 1);
+
+  return (
+    <ul className="space-y-2.5">
+      {data.map((d, i) => (
+        <li key={i}>
+          <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
+            <span className="truncate">{label(d.label)}</span>
+            <span className="tabular-nums text-foreground-600">{fmt(d.value, s.format)}</span>
           </div>
-        </Tab>
-
-        <Tab key="generated" title={t('reports.generated_reports', { count: generatedReports.length.toString() })}>
-          {/* Generated Reports */}
-          <Card>
-            <CardBody className="p-0">
-              {generatedReports.length === 0 ? (
-                <div className="text-center py-12">
-                  <FileText className="mx-auto text-gray-400 mb-4" size={48} />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    {t('reports.no_reports_yet')}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {t('reports.start_with_template')}
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {generatedReports.map((report) => (
-                    <div key={report.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(report.status)}
-                            <div>
-                              <h4 className="font-medium">{report.name}</h4>
-                              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                <span>{formatDate(report.generatedAt)}</span>
-                                <span>•</span>
-                                <span>{report.size}</span>
-                                <Chip 
-                                  size="sm" 
-                                  color={getStatusColor(report.status) as any}
-                                  variant="flat"
-                                >
-                                  {t(`reports.${report.status}`)}
-                                </Chip>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="flat"
-                            onPress={() => handlePreviewReport(report)}
-                            startContent={<Eye size={14} />}
-                          >
-                            {t('reports.preview')}
-                          </Button>
-                          
-                          <div className="flex items-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="flat"
-                              onPress={() => handleDownloadReport(report, 'json')}
-                              isIconOnly
-                            >
-                              <FileText size={14} />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="flat"
-                              onPress={() => handleDownloadReport(report, 'excel')}
-                              isIconOnly
-                            >
-                              <FileSpreadsheet size={14} />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="flat"
-                              onPress={() => handleDownloadReport(report, 'pdf')}
-                              isIconOnly
-                            >
-                              <FileText size={14} />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardBody>
-          </Card>
-        </Tab>
-      </Tabs>
-
-      {/* Generate Report Modal */}
-      <Modal 
-        isOpen={isGenerateOpen} 
-        onClose={onGenerateClose} 
-        size="3xl"
-        scrollBehavior="inside"
-      >
-        <ModalContent>
-          <ModalHeader>
-            {selectedTemplate ? selectedTemplate.name : t('reports.new_report_create')}
-          </ModalHeader>
-          <ModalBody>
-            <div className="space-y-6">
-              {!selectedTemplate && (
-                <Select
-                  label={t('reports.report_template')}
-                  placeholder={t('reports.select_template')}
-                  onSelectionChange={(keys) => {
-                    const templateId = Array.from(keys)[0] as string;
-                    const template = templates.find(t => t.id === templateId);
-                    setSelectedTemplate(template || null);
-                    setReportName(template?.name || '');
-                  }}
-                >
-                  {templates.map((template) => (
-                    <SelectItem key={template.id}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
-                </Select>
-              )}
-
-              {selectedTemplate && (
-                <Card>
-                  <CardBody className="p-4">
-                    <div className="flex items-center gap-3">
-                      {getTemplateIcon(selectedTemplate.category)}
-                      <div>
-                        <h4 className="font-medium">{selectedTemplate.name}</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {selectedTemplate.description}
-                        </p>
-                      </div>
-                    </div>
-                  </CardBody>
-                </Card>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  type="date"
-                  label={t('reports.start_date')}
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  isRequired
-                />
-                <Input
-                  type="date"
-                  label={t('reports.end_date')}
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  isRequired
-                />
-              </div>
-
-              <Input
-                label={t('reports.report_name')}
-                value={reportName}
-                onChange={(e) => setReportName(e.target.value)}
-                placeholder={t('reports.custom_report_name')}
-              />
-
-              <Textarea
-                label={t('reports.description')}
-                value={reportDescription}
-                onChange={(e) => setReportDescription(e.target.value)}
-                placeholder={t('reports.report_description')}
-                rows={2}
-              />
-
-              {departments.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    {t('reports.departments_optional')}
-                  </label>
-                  <CheckboxGroup
-                    value={selectedDepartments}
-                    onValueChange={setSelectedDepartments}
-                    className="grid grid-cols-2 gap-2"
-                  >
-                    {departments.map((dept) => (
-                      <Checkbox key={dept._id} value={dept._id}>
-                        {dept.name}
-                      </Checkbox>
-                    ))}
-                  </CheckboxGroup>
-                </div>
-              )}
-
-              <Divider />
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  isSelected={autoSchedule}
-                  onValueChange={setAutoSchedule}
-                >
-                  {t('reports.auto_schedule')}
-                </Checkbox>
-                {autoSchedule && (
-                  <Select
-                    size="sm"
-                    selectedKeys={[scheduleFrequency]}
-                    className="w-32"
-                    onSelectionChange={(keys) => {
-                      const freq = Array.from(keys)[0] as string;
-                      setScheduleFrequency(freq);
-                    }}
-                  >
-                    <SelectItem key="daily">{t('reports.daily')}</SelectItem>
-                    <SelectItem key="weekly">{t('reports.weekly')}</SelectItem>
-                    <SelectItem key="monthly">{t('reports.monthly')}</SelectItem>
-                  </Select>
-                )}
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="flat" onPress={onGenerateClose}>
-              {t('reports.cancel')}
-            </Button>
-            <Button 
-              color="primary" 
-              onPress={handleGenerateReport}
-              isLoading={generating}
-              isDisabled={!selectedTemplate || !startDate || !endDate}
-            >
-              {t('reports.generate_report')}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Preview Modal */}
-      <Modal 
-        isOpen={isPreviewOpen} 
-        onClose={onPreviewClose} 
-        size="4xl"
-        scrollBehavior="inside"
-      >
-        <ModalContent>
-          <ModalHeader>{t('reports.report_preview')}</ModalHeader>
-          <ModalBody>
-            {previewData ? (
-              <div className="space-y-4">
-                <Card>
-                  <CardBody>
-                    <h4 className="font-medium mb-2">{t('reports.report_information')}</h4>
-                    <div className="text-sm space-y-1 text-gray-600 dark:text-gray-400">
-                      <p><strong>{t('reports.report_type')}:</strong> {previewData.metadata?.reportType}</p>
-                      <p><strong>{t('reports.generated_at')}:</strong> {formatDate(previewData.metadata?.generatedAt)}</p>
-                      <p><strong>{t('reports.report_name_label')}:</strong> {previewData.metadata?.name}</p>
-                    </div>
-                  </CardBody>
-                </Card>
-                
-                <Card>
-                  <CardBody>
-                    <h4 className="font-medium mb-2">{t('reports.report_content')}</h4>
-                    <pre className="text-sm bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-auto max-h-96">
-                      {JSON.stringify(previewData, null, 2)}
-                    </pre>
-                  </CardBody>
-                </Card>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Spinner size="lg" />
-                <p className="mt-2">{t('reports.loading_report')}</p>
-              </div>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="flat" onPress={onPreviewClose}>
-              {t('reports.close')}
-            </Button>
-            <Button 
-              color="primary" 
-              startContent={<Download size={16} />}
-              onPress={() => {
-                if (previewData) {
-                  const blob = new Blob([JSON.stringify(previewData, null, 2)], { type: 'application/json' });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `report-${Date.now()}.json`;
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                }
-              }}
-            >
-              {t('reports.download')}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </div>
+          <div className="h-1.5 rounded-full bg-content2">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max((d.value / max) * 100, 2)}%` }} />
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }

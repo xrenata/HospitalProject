@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -22,8 +21,9 @@ import {
   useDisclosure,
   Select,
   SelectItem,
-  Textarea,
-} from "@heroui/react";
+  Textarea
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { Clock, Search, Trash2, Edit, Plus, Eye, Calendar } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -33,9 +33,12 @@ import { Shift, Staff } from "@/types";
 import { formatDate, formatTime, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 
+import DataSummary from "@/components/DataSummary";
+import DateField from '@/components/DateField';
+import TimeField from '@/components/TimeField';
 export default function ShiftsPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
+  const { user, can, canWrite } = useAuth();
+  const { t, te } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -141,7 +144,7 @@ export default function ShiftsPage() {
   };
 
   const handleAddShift = () => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('shifts')) {
       toast.error(t("shifts.insufficient_permissions"));
       return;
     }
@@ -161,7 +164,7 @@ export default function ShiftsPage() {
   };
 
   const handleEditShift = (shift: Shift) => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('shifts')) {
       toast.error(t("shifts.insufficient_permissions"));
       return;
     }
@@ -188,7 +191,7 @@ export default function ShiftsPage() {
   };
 
   const handleDeleteShift = (shift: Shift) => {
-    if (getPermissionLevel(user) < 3) {
+    if (!can('shifts.delete')) {
       toast.error(t("shifts.insufficient_permissions_delete"));
       return;
     }
@@ -290,7 +293,7 @@ export default function ShiftsPage() {
   };
 
   const handleStatusChange = async (shiftId: string, newStatus: string) => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('shifts')) {
       toast.error(t("shifts.insufficient_permissions"));
       return;
     }
@@ -363,20 +366,20 @@ export default function ShiftsPage() {
         );
       case "status":
         return (
-          <Chip color={getStatusColor(shift.status || "")} size="sm">
-            {t(`shifts.${shift.status}`) || shift.status || "scheduled"}
+          <Chip variant="flat" color={getStatusColor(shift.status || "")} size="sm">
+            {te(`shifts.${shift.status}`, shift.status || "scheduled")}
           </Chip>
         );
       case "actions":
         const shiftId = shift.shift_id || shift._id || shift.id?.toString() || "";
         return (
           <div className="flex gap-2 items-center">
-            <Button size="sm" color="secondary" variant="flat" onPress={() => handleViewShift(shift)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleViewShift(shift)}>
               <Eye size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('shifts') && (
               <>
-                <Button size="sm" color="primary" variant="flat" onPress={() => handleEditShift(shift)}>
+                <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditShift(shift)}>
                   <Edit size={16} />
                 </Button>
                 <Select
@@ -390,14 +393,14 @@ export default function ShiftsPage() {
                       handleStatusChange(shiftId, newStatus);
                     }
                   }}
-                >
+               >
                   <SelectItem key="scheduled">{t("shifts.scheduled")}</SelectItem>
                   <SelectItem key="completed">{t("shifts.completed")}</SelectItem>
                   <SelectItem key="cancelled">{t("shifts.cancelled")}</SelectItem>
                   <SelectItem key="no-show">{t("shifts.no_show")}</SelectItem>
                 </Select>
-                {getPermissionLevel(user) >= 3 && (
-                  <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteShift(shift)}>
+                {can('shifts.delete') && (
+                  <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeleteShift(shift)}>
                     <Trash2 size={16} />
                   </Button>
                 )}
@@ -424,20 +427,22 @@ export default function ShiftsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("shifts.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("shifts.subtitle")}
           </p>
         </div>
-        {getPermissionLevel(user) >= 2 && (
+        {canWrite('shifts') && (
           <Button color="primary" onPress={handleAddShift}>
             <Plus className="mr-2" size={20} />
             {t("shifts.add_shift")}
           </Button>
         )}
       </div>
+
+      <DataSummary entity="shifts" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -451,20 +456,20 @@ export default function ShiftsPage() {
               startContent={<Search size={16} />}
               isClearable
             />
-            <Input
-              type="date"
-              placeholder={t("shifts.filter_by_date")}
+            <DateField
+              
+             
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
               className="sm:w-48"
-              startContent={<Calendar size={16} />}
-            />
+             
+ />
             <Select
               placeholder={t("shifts.filter_by_status")}
               className="sm:w-48"
               selectedKeys={statusFilter !== "all" ? [statusFilter] : []}
               onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("shifts.all_status")}</SelectItem>
               <SelectItem key="scheduled">{t("shifts.scheduled")}</SelectItem>
               <SelectItem key="completed">{t("shifts.completed")}</SelectItem>
@@ -478,7 +483,7 @@ export default function ShiftsPage() {
       {/* Shifts Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Shifts table">
+          <Table aria-label="Shifts table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -488,7 +493,7 @@ export default function ShiftsPage() {
               isLoading={loading}
               loadingContent={t("shifts.loading_shifts")}
               emptyContent={t("shifts.no_shifts")}
-            >
+           >
               {shifts.map((shift) => (
                 <TableRow key={shift.id || shift.shift_id}>
                   {columns.map((column) => (
@@ -502,8 +507,8 @@ export default function ShiftsPage() {
           </Table>
 
           {shifts.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center p-4">
-              <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} />
+            <div className="flex justify-center border-t border-divider p-3">
+              <Pagination isCompact showControls total={totalPages} page={currentPage} onChange={setCurrentPage} />
             </div>
           )}
         </CardBody>
@@ -518,14 +523,14 @@ export default function ShiftsPage() {
           <ModalBody>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("shifts.staff_member")}
                   placeholder={t("shifts.select_staff")}
                   selectedKeys={formData.staff_id ? [formData.staff_id] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, staff_id: Array.from(keys)[0] as string || "" })}
                   isRequired
                   className="md:col-span-2"
-                >
+               >
                   {staff.filter(s => s.status === 'active').map((staffMember) => (
                     <SelectItem key={staffMember._id || staffMember.staff_id || ""}>
                       {staffMember.name} ({staffMember.role})
@@ -533,45 +538,45 @@ export default function ShiftsPage() {
                   ))}
                 </Select>
 
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t("shifts.date")}
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   isRequired
-                />
+ />
 
                 <div />
 
-                <Input
-                  type="time"
+                <TimeField
+                  
                   label={t("shifts.start_time")}
                   value={formData.start_time}
                   onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
                   isRequired
-                />
+ />
 
-                <Input
-                  type="time"
+                <TimeField
+                  
                   label={t("shifts.end_time")}
                   value={formData.end_time}
                   onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
                   isRequired
-                />
+ />
 
-                <Input
-                  type="time"
+                <TimeField
+                  
                   label={t("shifts.break_start")}
                   value={formData.break_start}
                   onChange={(e) => setFormData({ ...formData, break_start: e.target.value })}
-                />
+ />
 
-                <Input
-                  type="time"
+                <TimeField
+                  
                   label={t("shifts.break_end")}
                   value={formData.break_end}
                   onChange={(e) => setFormData({ ...formData, break_end: e.target.value })}
-                />
+ />
               </div>
 
               {/* Hours calculation preview */}
@@ -588,7 +593,7 @@ export default function ShiftsPage() {
                 </div>
               )}
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("shifts.notes")}
                 placeholder={t("shifts.notes_placeholder")}
                 value={formData.notes}
@@ -597,7 +602,7 @@ export default function ShiftsPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
+            <Button variant="light" onPress={onClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={handleSubmit}>
@@ -608,7 +613,7 @@ export default function ShiftsPage() {
       </Modal>
 
       {/* View Shift Details Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("shifts.shift_details")}</ModalHeader>
           <ModalBody>
@@ -654,8 +659,8 @@ export default function ShiftsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("common.status")}</p>
-                    <Chip color={getStatusColor(shiftToView.status || "")} size="sm">
-                      {t(`shifts.${shiftToView.status}`) || shiftToView.status}
+                    <Chip variant="flat" color={getStatusColor(shiftToView.status || "")} size="sm">
+                      {te(`shifts.${shiftToView.status}`, shiftToView.status)}
                     </Chip>
                   </div>
                 </div>
@@ -678,14 +683,14 @@ export default function ShiftsPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("shifts.delete_shift")}</ModalHeader>
           <ModalBody>
             <p>{t("shifts.delete_confirmation")}</p>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onDeleteClose}>
+            <Button variant="light" onPress={onDeleteClose}>
               {t("common.cancel")}
             </Button>
             <Button color="danger" onPress={confirmDeleteShift}>

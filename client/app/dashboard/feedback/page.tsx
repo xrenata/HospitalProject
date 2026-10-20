@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -23,8 +22,9 @@ import {
   Select,
   SelectItem,
   Textarea,
-  Switch,
-} from "@heroui/react";
+  Switch
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { Star, Search, Trash2, Edit, Plus, Eye, ThumbsUp, ThumbsDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -35,9 +35,10 @@ import { formatDate, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 import PatientAutocomplete from "@/components/PatientAutocomplete";
 
+import DataSummary from "@/components/DataSummary";
 export default function FeedbackPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
+  const { user, can, canWrite } = useAuth();
+  const { t, te } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [feedback, setFeedback] = useState<Feedback[]>([]);
@@ -170,7 +171,7 @@ export default function FeedbackPage() {
   };
 
   const handleEditFeedback = (feedback: Feedback) => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('feedback')) {
       toast.error(t("feedback.insufficient_permissions"));
       return;
     }
@@ -198,7 +199,7 @@ export default function FeedbackPage() {
   };
 
   const handleDeleteFeedback = (feedback: Feedback) => {
-    if (getPermissionLevel(user) < 3) {
+    if (!can('feedback.delete')) {
       toast.error(t("feedback.insufficient_permissions_delete"));
       return;
     }
@@ -318,7 +319,7 @@ export default function FeedbackPage() {
           <div>
             <div className="mb-1">{renderStars(feedback.rating || 0)}</div>
             <Chip color={getCategoryColor(feedback.category || "")} size="sm" variant="flat">
-              {t(`feedback.${feedback.category}`) || feedback.category}
+              {te(`feedback.${feedback.category}`, feedback.category)}
             </Chip>
           </div>
         );
@@ -334,16 +335,16 @@ export default function FeedbackPage() {
         const feedbackId = feedback.feedback_id || feedback._id || feedback.id?.toString() || "";
         return (
           <div className="flex gap-2 items-center">
-            <Button size="sm" color="secondary" variant="flat" onPress={() => handleViewFeedback(feedback)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleViewFeedback(feedback)}>
               <Eye size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('feedback') && (
               <>
-                <Button size="sm" color="primary" variant="flat" onPress={() => handleEditFeedback(feedback)}>
+                <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditFeedback(feedback)}>
                   <Edit size={16} />
                 </Button>
-                {getPermissionLevel(user) >= 3 && (
-                  <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteFeedback(feedback)}>
+                {can('feedback.delete') && (
+                  <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeleteFeedback(feedback)}>
                     <Trash2 size={16} />
                   </Button>
                 )}
@@ -374,10 +375,10 @@ export default function FeedbackPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("feedback.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("feedback.subtitle")}
           </p>
         </div>
@@ -387,42 +388,7 @@ export default function FeedbackPage() {
         </Button>
       </div>
 
-      {/* Stats Card */}
-      {feedback.length > 0 && (
-        <Card>
-          <CardBody className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">{t("feedback.overall_rating")}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  {renderStars(Math.round(averageRating * 10) / 10)}
-                  <span className="text-sm text-gray-500">({feedback.length} {t("feedback.reviews")})</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {feedback.filter(f => (f.rating || 0) >= 4).length}
-                  </div>
-                  <div className="text-sm text-gray-500 flex items-center gap-1">
-                    <ThumbsUp size={12} />
-                    {t("feedback.positive")}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">
-                    {feedback.filter(f => (f.rating || 0) < 3).length}
-                  </div>
-                  <div className="text-sm text-gray-500 flex items-center gap-1">
-                    <ThumbsDown size={12} />
-                    {t("feedback.negative")}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      )}
+      <DataSummary entity="feedback" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -441,20 +407,20 @@ export default function FeedbackPage() {
               className="lg:w-40"
               selectedKeys={categoryFilter !== "all" ? [categoryFilter] : []}
               onSelectionChange={(keys) => setCategoryFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("feedback.all_categories")}</SelectItem>
               {feedbackCategories.map((category) => (
                 <SelectItem key={category}>
-                  {t(`feedback.${category}`)}
+                  {te(`feedback.${category}`)}
                 </SelectItem>
-              ))}
+              )) as any}
             </Select>
             <Select
               placeholder={t("feedback.filter_by_rating")}
               className="lg:w-40"
               selectedKeys={ratingFilter !== "all" ? [ratingFilter] : []}
               onSelectionChange={(keys) => setRatingFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("feedback.all_ratings")}</SelectItem>
               <SelectItem key="5">5 ⭐</SelectItem>
               <SelectItem key="4">4 ⭐</SelectItem>
@@ -469,7 +435,7 @@ export default function FeedbackPage() {
       {/* Feedback Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Feedback table">
+          <Table aria-label="Feedback table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -479,7 +445,7 @@ export default function FeedbackPage() {
               isLoading={loading}
               loadingContent={t("feedback.loading_feedback")}
               emptyContent={t("feedback.no_feedback")}
-            >
+           >
               {feedback.map((item) => (
                 <TableRow key={item.id || item.feedback_id}>
                   {columns.map((column) => (
@@ -493,8 +459,8 @@ export default function FeedbackPage() {
           </Table>
 
           {feedback.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center p-4">
-              <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} />
+            <div className="flex justify-center border-t border-divider p-3">
+              <Pagination isCompact showControls total={totalPages} page={currentPage} onChange={setCurrentPage} />
             </div>
           )}
         </CardBody>
@@ -520,13 +486,13 @@ export default function FeedbackPage() {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("feedback.rating")}
                   placeholder={t("feedback.select_rating")}
                   selectedKeys={formData.rating ? [formData.rating] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, rating: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   <SelectItem key="5">5 ⭐ {t("feedback.excellent")}</SelectItem>
                   <SelectItem key="4">4 ⭐ {t("feedback.very_good")}</SelectItem>
                   <SelectItem key="3">3 ⭐ {t("feedback.good")}</SelectItem>
@@ -534,16 +500,16 @@ export default function FeedbackPage() {
                   <SelectItem key="1">1 ⭐ {t("feedback.poor")}</SelectItem>
                 </Select>
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("feedback.category")}
                   placeholder={t("feedback.select_category")}
                   selectedKeys={formData.category ? [formData.category] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, category: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   {feedbackCategories.map((category) => (
                     <SelectItem key={category}>
-                      {t(`feedback.${category}`)}
+                      {te(`feedback.${category}`)}
                     </SelectItem>
                   ))}
                 </Select>
@@ -560,7 +526,7 @@ export default function FeedbackPage() {
                 />
               </div>
 
-              <Textarea
+              <Textarea labelPlacement="outside" variant="bordered"
                 label={t("feedback.comments")}
                 placeholder={t("feedback.comments_placeholder")}
                 value={formData.comments}
@@ -570,7 +536,7 @@ export default function FeedbackPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
+            <Button variant="light" onPress={onClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={handleSubmit}>
@@ -581,7 +547,7 @@ export default function FeedbackPage() {
       </Modal>
 
       {/* View Feedback Details Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("feedback.feedback_details")}</ModalHeader>
           <ModalBody>
@@ -609,8 +575,8 @@ export default function FeedbackPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("feedback.category")}</p>
-                    <Chip color={getCategoryColor(feedbackToView.category || "")} size="sm">
-                      {t(`feedback.${feedbackToView.category}`) || feedbackToView.category}
+                    <Chip variant="flat" color={getCategoryColor(feedbackToView.category || "")} size="sm">
+                      {te(`feedback.${feedbackToView.category}`, feedbackToView.category)}
                     </Chip>
                   </div>
                 </div>
@@ -633,14 +599,14 @@ export default function FeedbackPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("feedback.delete_feedback")}</ModalHeader>
           <ModalBody>
             <p>{t("feedback.delete_confirmation")}</p>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onDeleteClose}>
+            <Button variant="light" onPress={onDeleteClose}>
               {t("common.cancel")}
             </Button>
             <Button color="danger" onPress={confirmDeleteFeedback}>

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+mongoose.plugin(require('./hospitalScope').plugin); // every collection gets a hospitalId and is scoped to the current hospital
 
 // Patient Schema
 const patientSchema = new mongoose.Schema({
@@ -62,8 +63,11 @@ const staffSchema = new mongoose.Schema({
     salary: Number,
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     username: String,
-    password: String,
-    permLevel: { type: Number, default: 1 }, // 1=Nurse, 2=Doctor, 3=Admin
+    password: { type: String, select: false },
+    permLevel: { type: Number, default: 1 }, // legacy 1-3, kept in sync with the effective permissions
+    roleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' }, // access role (what the person may do)
+    extraPermissions: { type: [String], default: [] }, // granted on top of the role
+    deniedPermissions: { type: [String], default: [] }, // removed from the role for this person only
     permissionLevel: { type: Number, default: 1 }, // For compatibility with frontend
     
     // Admin-specific fields
@@ -274,7 +278,75 @@ testSchema.pre('save', updateTimestamp);
 
 // Create and export models
 const Patient = mongoose.model('Patient', patientSchema);
+staffSchema.index({ name: 1 });
+staffSchema.index({ username: 1 });
+staffSchema.index({ roleId: 1 });
+staffSchema.index({ department_id: 1, status: 1 });
+staffSchema.index({ name: 'text', email: 'text', specialization: 'text', username: 'text' });
+
+// Access role: a named set of permissions ("patients.edit", ...) that can be assigned to many staff.
+const roleSchema = new mongoose.Schema({
+    key: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    name: { type: String, required: true, trim: true },
+    description: { type: String, default: '' },
+    offeredResources: String, // which later-added resources this role has already been offered
+    color: { type: String, default: 'default' },
+    permissions: { type: [String], default: [] },
+    isSystem: { type: Boolean, default: false }, // can't be deleted
+    locked: { type: Boolean, default: false }, // permissions can't be changed (the administrator role)
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+
+// Who changed what about access, newest first. Kept so changes to permissions can be reviewed.
+const auditLogSchema = new mongoose.Schema({
+    actorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
+    actorName: String,
+    action: { type: String, required: true }, // e.g. role.updated, staff.access_changed
+    targetType: String,
+    targetId: String,
+    targetName: String,
+    details: mongoose.Schema.Types.Mixed,
+    createdAt: { type: Date, default: Date.now, index: true }
+});
+
+staffSchema.options.hospitalMulti = true;
 const Staff = mongoose.model('Staff', staffSchema);
+// Vital signs taken at a point in time (blood pressure, pulse, temperature, ...)
+const vitalSchema = new mongoose.Schema({
+    patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient', required: true, index: true },
+    staffId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
+    recordedAt: { type: Date, default: Date.now, index: true },
+    systolic: Number, // mmHg
+    diastolic: Number, // mmHg
+    heartRate: Number, // bpm
+    temperature: Number, // °C
+    spo2: Number, // %
+    respiratoryRate: Number, // breaths per minute
+    weight: Number, // kg
+    height: Number, // cm
+    notes: String,
+    createdAt: { type: Date, default: Date.now }
+});
+
+const Vital = mongoose.model('Vital', vitalSchema);
+const generatedReportSchema = new mongoose.Schema({
+    template: { type: String, required: true },
+    title: String,
+    from: Date,
+    to: Date,
+    lang: String,
+    generatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff' },
+    generatedByName: String,
+    result: mongoose.Schema.Types.Mixed,
+    createdAt: { type: Date, default: Date.now, index: true }
+});
+const GeneratedReport = mongoose.model('GeneratedReport', generatedReportSchema);
+
+roleSchema.options.noHospital = true;
+const Role = mongoose.model('Role', roleSchema);
+auditLogSchema.options.noHospital = true;
+const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 const Department = mongoose.model('Department', departmentSchema);
 const Room = mongoose.model('Room', roomSchema);
 const Appointment = mongoose.model('Appointment', appointmentSchema);
@@ -545,9 +617,13 @@ const Complaint = mongoose.model('Complaint', complaintSchema);
 // Hospital Schema
 const hospitalSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    type: { type: String, required: true },
-    capacity: { type: Number, required: true },
-    address: { type: String, required: true },
+    type: { type: String, default: 'general' },
+    capacity: { type: Number, default: 0 },
+    address: { type: String, default: '' },
+    group: String, // umbrella / network the hospital belongs to
+    code: String,
+    city: String,
+    isDefault: { type: Boolean, default: false },
     ambulanceCount: { type: Number, default: 0 },
     ambulance_count: { type: Number, default: 0 },
     equipment: String,
@@ -693,6 +769,7 @@ insuranceSchema.pre('save', updateTimestamp);
 shiftSchema.pre('save', updateTimestamp);
 feedbackSchema.pre('save', updateTimestamp);
 
+hospitalSchema.options.noHospital = true;
 const Hospital = mongoose.model('Hospital', hospitalSchema);
 const Insurance = mongoose.model('Insurance', insuranceSchema);
 const Shift = mongoose.model('Shift', shiftSchema);
@@ -701,6 +778,10 @@ const Feedback = mongoose.model('Feedback', feedbackSchema);
 module.exports = {
     Patient,
     Staff,
+    Vital,
+    GeneratedReport,
+    Role,
+    AuditLog,
     Department,
     Room,
     Appointment,

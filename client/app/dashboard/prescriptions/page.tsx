@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -22,8 +21,9 @@ import {
   useDisclosure,
   Select,
   SelectItem,
-  Textarea,
-} from "@heroui/react";
+  Textarea
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { Pill, Search, Trash2, Edit, Plus, Eye } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -34,9 +34,11 @@ import { formatDate, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 import PatientAutocomplete from "@/components/PatientAutocomplete";
 
+import DataSummary from "@/components/DataSummary";
+import DateField from '@/components/DateField';
 export default function PrescriptionsPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
+  const { user, can, canWrite } = useAuth();
+  const { t, te } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
@@ -364,20 +366,20 @@ export default function PrescriptionsPage() {
         return formatDate(prescription.date_prescribed || "");
       case "status":
         return (
-          <Chip color={getStatusColor(prescription.status || "")} size="sm">
-            {t(`prescriptions.${prescription.status}`) || prescription.status || "active"}
+          <Chip variant="flat" color={getStatusColor(prescription.status || "")} size="sm">
+            {te(`prescriptions.${prescription.status}`, prescription.status || "active")}
           </Chip>
         );
       case "actions":
         const prescriptionId = prescription.prescription_id || prescription._id || prescription.id?.toString() || "";
         return (
           <div className="flex gap-2 items-center">
-            <Button size="sm" color="secondary" variant="flat" onPress={() => handleViewPrescription(prescription)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleViewPrescription(prescription)}>
               <Eye size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('prescriptions') && (
               <>
-                <Button size="sm" color="primary" variant="flat" onPress={() => handleEditPrescription(prescription)}>
+                <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditPrescription(prescription)}>
                   <Edit size={16} />
                 </Button>
                 <Select
@@ -391,12 +393,12 @@ export default function PrescriptionsPage() {
                       handleStatusChange(prescriptionId, newStatus);
                     }
                   }}
-                >
+               >
                   <SelectItem key="active">{t("prescriptions.active")}</SelectItem>
                   <SelectItem key="completed">{t("prescriptions.completed")}</SelectItem>
                   <SelectItem key="cancelled">{t("prescriptions.cancelled")}</SelectItem>
                 </Select>
-                <Button size="sm" color="danger" variant="flat" onPress={() => handleDeletePrescription(prescription)}>
+                <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeletePrescription(prescription)}>
                   <Trash2 size={16} />
                 </Button>
               </>
@@ -423,20 +425,22 @@ export default function PrescriptionsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("prescriptions.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("prescriptions.subtitle")}
           </p>
         </div>
-        {getPermissionLevel(user) >= 2 && (
+        {canWrite('prescriptions') && (
           <Button color="primary" onPress={handleAddPrescription}>
             <Plus className="mr-2" size={20} />
             {t("prescriptions.add_prescription")}
           </Button>
         )}
       </div>
+
+      <DataSummary entity="prescriptions" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -455,7 +459,7 @@ export default function PrescriptionsPage() {
               className="sm:w-48"
               selectedKeys={statusFilter !== "all" ? [statusFilter] : []}
               onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("prescriptions.all_status")}</SelectItem>
               <SelectItem key="active">{t("prescriptions.active")}</SelectItem>
               <SelectItem key="completed">{t("prescriptions.completed")}</SelectItem>
@@ -468,7 +472,7 @@ export default function PrescriptionsPage() {
       {/* Prescriptions Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Prescriptions table">
+          <Table aria-label="Prescriptions table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -478,7 +482,7 @@ export default function PrescriptionsPage() {
               isLoading={loading}
               loadingContent={t("prescriptions.loading_prescriptions")}
               emptyContent={t("prescriptions.no_prescriptions")}
-            >
+           >
               {prescriptions.map((prescription) => (
                 <TableRow key={prescription.id || prescription.prescription_id}>
                   {columns.map((column) => (
@@ -492,8 +496,8 @@ export default function PrescriptionsPage() {
           </Table>
 
           {prescriptions.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center p-4">
-              <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} />
+            <div className="flex justify-center border-t border-divider p-3">
+              <Pagination isCompact showControls total={totalPages} page={currentPage} onChange={setCurrentPage} />
             </div>
           )}
         </CardBody>
@@ -519,13 +523,13 @@ export default function PrescriptionsPage() {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("prescriptions.staff_member")}
                   placeholder={t("prescriptions.select_staff")}
                   selectedKeys={formData.staff_id ? [formData.staff_id] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, staff_id: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   {staff.filter(s => s.status === 'active').map((staffMember) => (
                     <SelectItem key={staffMember._id || staffMember.staff_id || ""}>
                       Dr. {staffMember.name}
@@ -534,13 +538,13 @@ export default function PrescriptionsPage() {
                   ))}
                 </Select>
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("prescriptions.medication")}
                   placeholder={t("prescriptions.select_medication")}
                   selectedKeys={formData.medication_id ? [formData.medication_id] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, medication_id: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   {medications.map((medication) => (
                     <SelectItem key={medication.medication_id || medication._id || ""}>
                       {medication.name} ({medication.dosage})
@@ -548,7 +552,7 @@ export default function PrescriptionsPage() {
                   ))}
                 </Select>
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   label={t("prescriptions.dosage")}
                   placeholder={t("prescriptions.dosage_placeholder")}
                   value={formData.dosage}
@@ -556,7 +560,7 @@ export default function PrescriptionsPage() {
                   isRequired
                 />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   label={t("prescriptions.frequency")}
                   placeholder={t("prescriptions.frequency_placeholder")}
                   value={formData.frequency}
@@ -564,7 +568,7 @@ export default function PrescriptionsPage() {
                   isRequired
                 />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   label={t("prescriptions.duration")}
                   placeholder={t("prescriptions.duration_placeholder")}
                   value={formData.duration}
@@ -572,16 +576,16 @@ export default function PrescriptionsPage() {
                   isRequired
                 />
 
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t("prescriptions.date_prescribed")}
                   value={formData.date_prescribed}
                   onChange={(e) => setFormData({ ...formData, date_prescribed: e.target.value })}
                   isRequired
-                />
+ />
               </div>
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("prescriptions.instructions")}
                 placeholder={t("prescriptions.instructions_placeholder")}
                 value={formData.instructions}
@@ -590,7 +594,7 @@ export default function PrescriptionsPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
+            <Button variant="light" onPress={onClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={handleSubmit}>
@@ -601,7 +605,7 @@ export default function PrescriptionsPage() {
       </Modal>
 
       {/* View Prescription Details Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("prescriptions.prescription_details")}</ModalHeader>
           <ModalBody>
@@ -638,8 +642,8 @@ export default function PrescriptionsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("common.status")}</p>
-                    <Chip color={getStatusColor(prescriptionToView.status || "")} size="sm">
-                      {t(`prescriptions.${prescriptionToView.status}`) || prescriptionToView.status}
+                    <Chip variant="flat" color={getStatusColor(prescriptionToView.status || "")} size="sm">
+                      {te(`prescriptions.${prescriptionToView.status}`, prescriptionToView.status)}
                     </Chip>
                   </div>
                 </div>
@@ -662,14 +666,14 @@ export default function PrescriptionsPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("prescriptions.delete_prescription")}</ModalHeader>
           <ModalBody>
             <p>{t("prescriptions.delete_confirmation")}</p>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onDeleteClose}>
+            <Button variant="light" onPress={onDeleteClose}>
               {t("common.cancel")}
             </Button>
             <Button color="danger" onPress={confirmDeletePrescription}>

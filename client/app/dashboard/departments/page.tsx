@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  Button, 
-  Card, 
-  CardBody, 
-  Input, 
-  Select, 
-  SelectItem, 
+import {
+  Button,
+  Card,
+  CardBody,
+  Input,
+  Select,
+  SelectItem,
   Textarea,
   Modal,
   ModalContent,
@@ -21,7 +21,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Dropdown,
   DropdownTrigger,
   DropdownMenu,
@@ -31,7 +30,8 @@ import {
   Tooltip,
   Badge,
   Avatar
-} from "@heroui/react";
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { 
   Plus, 
   Search, 
@@ -55,6 +55,8 @@ import { departmentsAPI, staffAPI } from "@/lib/api";
 import { useI18n } from "@/contexts/I18nContext";
 import toast from "react-hot-toast";
 
+import DataSummary from "@/components/DataSummary";
+import { useConfirm } from '@/components/ConfirmDialog';
 interface Department {
   _id: string;
   id?: string;
@@ -109,6 +111,7 @@ interface DepartmentStats {
 }
 
 const DepartmentsPage = () => {
+  const confirmAction = useConfirm();
   const { t } = useI18n();
   const { isOpen, onOpen, onClose } = useDisclosure();
   
@@ -309,7 +312,7 @@ const DepartmentsPage = () => {
   };
 
   const handleDelete = async (departmentId: string) => {
-    if (!confirm(t("departments.delete_confirmation") || "Are you sure you want to delete this department?")) return;
+    if (!await confirmAction(t("departments.delete_confirmation") || "Are you sure you want to delete this department?")) return;
     
     try {
       await departmentsAPI.delete(departmentId);
@@ -392,7 +395,7 @@ const DepartmentsPage = () => {
             color={status?.color as any}
             size="sm"
             variant="flat"
-          >
+         >
             {status?.label}
           </Chip>
         );
@@ -431,7 +434,7 @@ const DepartmentsPage = () => {
                 color="warning" 
                 isIconOnly
                 onPress={() => handleEdit(department)}
-              >
+             >
                 <Edit size={16} />
               </Button>
             </Tooltip>
@@ -448,7 +451,7 @@ const DepartmentsPage = () => {
                   color="danger"
                   startContent={<Trash2 size={16} />}
                   onPress={() => handleDelete(department._id)}
-                >
+               >
                   {t("departments.delete") || "Delete"}
                 </DropdownItem>
               </DropdownMenu>
@@ -467,7 +470,7 @@ const DepartmentsPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("departments.title") || "Department Management"}
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -485,7 +488,7 @@ const DepartmentsPage = () => {
             }}
             isLoading={loading}
             startContent={!loading && <RefreshCw size={16} />}
-          >
+         >
             {t("departments.refresh") || "Refresh"}
           </Button>
           <Button
@@ -495,72 +498,13 @@ const DepartmentsPage = () => {
               onOpen();
             }}
             startContent={<Plus size={16} />}
-          >
+         >
             {t("departments.add_department") || "Add Department"}
           </Button>
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardBody className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary-100 rounded-lg">
-                  <Building2 className="h-6 w-6 text-primary-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.totalDepartments}</p>
-                  <p className="text-sm text-default-500">{t("departments.total_departments") || "Total Departments"}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-          
-          <Card>
-            <CardBody className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-success-100 rounded-lg">
-                  <UserCheck className="h-6 w-6 text-success-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.activeDepartments}</p>
-                  <p className="text-sm text-default-500">{t("departments.active_departments") || "Active Departments"}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-          
-          <Card>
-            <CardBody className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-warning-100 rounded-lg">
-                  <Users className="h-6 w-6 text-warning-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.totalStaff}</p>
-                  <p className="text-sm text-default-500">{t("departments.total_staff") || "Total Staff"}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-          
-          <Card>
-            <CardBody className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-secondary-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-secondary-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stats.assignedStaff}</p>
-                  <p className="text-sm text-default-500">{t("departments.assigned_staff") || "Assigned Staff"}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-        </div>
-      )}
+      <DataSummary entity="departments" loading={loading} />
 
       {/* Filters */}
       <Card>
@@ -586,7 +530,7 @@ const DepartmentsPage = () => {
                 }}
                 className="sm:max-w-xs"
                 isClearable
-              >
+             >
                 {statuses.map((status) => (
                   <SelectItem key={status.key}>
                     {status.label}
@@ -606,7 +550,7 @@ const DepartmentsPage = () => {
                     setSearchTerm('');
                     setSelectedStatus('');
                   }}
-                >
+               >
                   {t("common.clear_filters") || "Clear Filters"}
                 </Button>
               </div>
@@ -628,7 +572,7 @@ const DepartmentsPage = () => {
               </div>
             </div>
           ) : (
-            <Table aria-label="Departments table">
+            <Table aria-label="Departments table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
               <TableHeader>
                 <TableColumn key="name">{t("departments.name") || "Name"}</TableColumn>
                 <TableColumn key="head_staff">{t("departments.head_staff") || "Head Staff"}</TableColumn>
@@ -682,7 +626,7 @@ const DepartmentsPage = () => {
         }} 
         size="2xl" 
         scrollBehavior="inside"
-      >
+     >
         <ModalContent>
           <ModalHeader>
             {isEditing ? 
@@ -691,7 +635,7 @@ const DepartmentsPage = () => {
           </ModalHeader>
           <ModalBody>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("departments.name") || "Department Name"}
                 placeholder={t("departments.enter_name") || "Enter department name"}
                 value={formData.name}
@@ -699,7 +643,7 @@ const DepartmentsPage = () => {
                 isRequired
               />
 
-              <Select
+              <Select labelPlacement="outside" variant="bordered"
                 label={t("departments.head_staff") || "Head Staff"}
                 placeholder={t("departments.select_head_staff") || "Select head staff"}
                 selectedKeys={formData.head_staff_id ? [formData.head_staff_id] : []}
@@ -707,7 +651,7 @@ const DepartmentsPage = () => {
                   const selectedKey = Array.from(keys)[0] as string;
                   setFormData({ ...formData, head_staff_id: selectedKey || "" });
                 }}
-              >
+             >
                 {Array.isArray(staff) ? staff.map((member) => (
                   <SelectItem key={member._id}>
                     {member.name} - {member.role}
@@ -715,14 +659,14 @@ const DepartmentsPage = () => {
                 )) : []}
               </Select>
 
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("departments.location") || "Location"}
                 placeholder={t("departments.enter_location") || "Enter location"}
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
               />
 
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("departments.capacity") || "Capacity"}
                 type="number"
                 placeholder={t("departments.enter_capacity") || "Enter capacity"}
@@ -730,14 +674,14 @@ const DepartmentsPage = () => {
                 onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
               />
 
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("departments.phone") || "Phone"}
                 placeholder={t("departments.enter_phone") || "Enter phone"}
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               />
 
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("departments.email") || "Email"}
                 type="email"
                 placeholder={t("departments.enter_email") || "Enter email"}
@@ -745,7 +689,7 @@ const DepartmentsPage = () => {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
 
-              <Input
+              <Input labelPlacement="outside" variant="bordered"
                 label={t("departments.budget") || "Budget"}
                 type="number"
                 placeholder={t("departments.enter_budget") || "Enter budget"}
@@ -754,14 +698,14 @@ const DepartmentsPage = () => {
                 startContent={<span>₺</span>}
               />
 
-              <Select
+              <Select placeholder=" " labelPlacement="outside" variant="bordered"
                 label={t("departments.status") || "Status"}
                 selectedKeys={[formData.status]}
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
                   setFormData({ ...formData, status: selectedKey as 'active' | 'inactive' });
                 }}
-              >
+             >
                 {statuses.map((status) => (
                   <SelectItem key={status.key}>
                     {status.label}
@@ -770,7 +714,7 @@ const DepartmentsPage = () => {
               </Select>
 
               <div className="md:col-span-2">
-                <Textarea
+                <Textarea labelPlacement="outside" variant="bordered"
                   label={t("departments.description") || "Description"}
                   placeholder={t("departments.enter_description") || "Enter department description"}
                   value={formData.description}

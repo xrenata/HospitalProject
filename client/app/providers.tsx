@@ -8,7 +8,9 @@ import { useRouter } from "next/navigation";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { I18nProvider } from "@/contexts/I18nContext";
+import { HospitalProvider } from "@/contexts/HospitalContext";
+import { I18nProvider, useI18n } from "@/contexts/I18nContext";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -23,89 +25,51 @@ declare module "@react-types/shared" {
   }
 }
 
-export function Providers({ children, themeProps }: ProvidersProps) {
+/** HeroUI's calendars and date fields follow the interface language. Lives inside I18nProvider to read it. */
+function HeroShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { language } = useI18n();
 
   return (
-    <HeroUIProvider navigate={router.push}>
-      <NextThemesProvider {...themeProps}>
-        <I18nProvider>
+    <HeroUIProvider locale={language === "tr" ? "tr-TR" : "en-US"} navigate={router.push}>
+      {children}
+    </HeroUIProvider>
+  );
+}
+
+export function Providers({ children, themeProps }: ProvidersProps) {
+
+  return (
+    <NextThemesProvider {...themeProps}>
+      <I18nProvider>
+        <HeroShell>
           <AuthProvider>
-            {children}
+            <HospitalProvider>
+              <ConfirmProvider>{children}</ConfirmProvider>
+            </HospitalProvider>
             <Toaster
               position="bottom-right"
               toastOptions={{
                 duration: 4000,
                 style: {
-                  background: "var(--heroui-background)",
-                  color: "var(--heroui-foreground)",
-                  border: "1px solid var(--heroui-divider)",
+                  background: "hsl(var(--heroui-content1))",
+                  color: "hsl(var(--heroui-foreground))",
+                  border: "1px solid hsl(var(--heroui-default-200))",
                   borderRadius: "12px",
-                  padding: "16px 20px",
-                  boxShadow:
-                    "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                  padding: "12px 16px",
+                  boxShadow: "0 12px 32px -12px rgba(0, 0, 0, 0.25)",
                   fontSize: "14px",
                   fontWeight: "500",
-                  minWidth: "300px",
-                  maxWidth: "400px",
+                  maxWidth: "420px",
                 },
-                success: {
-                  style: {
-                    background:
-                      "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: "12px",
-                    padding: "16px 20px",
-                    boxShadow:
-                      "0 10px 25px -5px rgba(16, 185, 129, 0.3), 0 10px 10px -5px rgba(16, 185, 129, 0.1)",
-                  },
-                  iconTheme: {
-                    primary: "#ffffff",
-                    secondary: "#10b981",
-                  },
-                },
-                error: {
-                  style: {
-                    background:
-                      "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: "12px",
-                    padding: "16px 20px",
-                    boxShadow:
-                      "0 10px 25px -5px rgba(239, 68, 68, 0.3), 0 10px 10px -5px rgba(239, 68, 68, 0.1)",
-                  },
-                  iconTheme: {
-                    primary: "#ffffff",
-                    secondary: "#ef4444",
-                  },
-                },
-                loading: {
-                  style: {
-                    background:
-                      "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: "12px",
-                    padding: "16px 20px",
-                    boxShadow:
-                      "0 10px 25px -5px rgba(59, 130, 246, 0.3), 0 10px 10px -5px rgba(59, 130, 246, 0.1)",
-                  },
-                  iconTheme: {
-                    primary: "#ffffff",
-                    secondary: "#3b82f6",
-                  },
-                },
+                success: { iconTheme: { primary: "#17c964", secondary: "#ffffff" } },
+                error: { iconTheme: { primary: "#f31260", secondary: "#ffffff" } },
               }}
-              containerStyle={{
-                bottom: "24px",
-                right: "24px",
-              }}
+              containerStyle={{ bottom: "24px", right: "24px" }}
             />
           </AuthProvider>
-        </I18nProvider>
-      </NextThemesProvider>
-    </HeroUIProvider>
+        </HeroShell>
+      </I18nProvider>
+    </NextThemesProvider>
   );
 }

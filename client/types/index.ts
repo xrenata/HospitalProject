@@ -112,20 +112,10 @@ export interface Staff {
   updatedAt?: string;
 }
 
-// Department Types
-export interface Department {
-  department_id: string;
-  name: string;
-  description?: string;
-  head_staff_id?: string;
-  budget?: number;
-  status: 'active' | 'inactive';
-  created_at?: string;
-  updated_at?: string;
-}
-
 // Room Types
 export interface Room {
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
   room_id: string;
   room_number: string;
   room_type: 'general' | 'private' | 'icu' | 'operation' | 'emergency';
@@ -181,6 +171,8 @@ export interface Treatment {
 
 // Test Types
 export interface Test {
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
   test_id: string;
   patient_id: string;
   staff_id: string;
@@ -196,6 +188,8 @@ export interface Test {
 
 // Equipment Types
 export interface Equipment {
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
   equipment_id: string;
   name: string;
   description?: string;
@@ -238,6 +232,8 @@ export interface Visit {
 
 // Prescription Types
 export interface Prescription {
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
   prescription_id: string;
   patient_id: string;
   staff_id: string;
@@ -254,6 +250,8 @@ export interface Prescription {
 
 // Surgery Types
 export interface Surgery {
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
   surgery_id: string;
   patient_id: string;
   primary_surgeon_id: string;
@@ -273,6 +271,8 @@ export interface Surgery {
 
 // Complaint Types
 export interface Complaint {
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
   complaint_id: string;
   patient_id: string;
   complaint_text: string;
@@ -287,6 +287,8 @@ export interface Complaint {
 
 // Feedback Types
 export interface Feedback {
+  _id?: string; // MongoDB ID
+  id?: number; // For compatibility
   feedback_id: string;
   patient_id: string;
   rating: number; // 1-5 stars

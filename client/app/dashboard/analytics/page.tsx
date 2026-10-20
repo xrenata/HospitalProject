@@ -18,6 +18,10 @@ import { useI18n } from '@/contexts/I18nContext';
 import { analyticsAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
+import { Donut, Legend, type Segment } from '@/components/charts';
+import { toneFor } from '@/components/DataSummary';
+import { useValueLabel } from '@/components/Chip';
+import DateField from '@/components/DateField';
 interface OverviewStats {
   totalPatients: number;
   totalStaff: number;
@@ -34,6 +38,105 @@ interface ChartData {
   name: string;
   value: number;
   [key: string]: any;
+}
+
+function StatCard({ title, value, icon: Icon, trend, trendValue }: {
+  title: string;
+  value: string | number;
+  icon: any;
+  trend?: 'up' | 'down';
+  trendValue?: string;
+  color?: string;
+}) {
+  return (
+    <Card>
+      <CardBody className="gap-2 p-5">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-foreground-500">{title}</span>
+          <Icon className="text-foreground-400" size={18} />
+        </div>
+        <p className="text-2xl font-semibold tabular-nums">{value}</p>
+        {trend && trendValue && (
+          <span className={`inline-flex items-center gap-1 text-xs font-medium ${trend === 'up' ? 'text-success' : 'text-danger'}`}>
+            {trend === 'up' ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+            {trendValue}
+          </span>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+function ChartCard({ title, children, actions, className }: {
+  title: string;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card className={className}>
+      <CardBody className="gap-5 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-base font-semibold">{title}</h3>
+          {actions}
+        </div>
+        {children}
+      </CardBody>
+    </Card>
+  );
+}
+
+function SimpleBarChart({ data, dataKey = 'value', nameKey = 'name' }: {
+  data: ChartData[];
+  dataKey?: string;
+  nameKey?: string;
+}) {
+  if (!data?.length) return <p className="py-8 text-center text-sm text-foreground-400">-</p>;
+  const max = Math.max(...data.map((d) => d[dataKey]), 1);
+
+  return (
+    <ul className="space-y-4">
+      {data.map((item, index) => (
+        <li key={index}>
+          <div className="mb-1.5 flex items-baseline justify-between gap-4 text-sm">
+            <span className="truncate">{item[nameKey]}</span>
+            <span className="shrink-0 font-medium tabular-nums">{item[dataKey]}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-default-100">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max((item[dataKey] / max) * 100, item[dataKey] ? 2 : 0)}%` }} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SimplePieChart({ data, dataKey = 'value', nameKey = 'name' }: {
+  data: ChartData[];
+  dataKey?: string;
+  nameKey?: string;
+}) {
+  const valueLabel = useValueLabel();
+  const total = data?.reduce((sum, item) => sum + item[dataKey], 0) || 0;
+
+  if (!data?.length || total === 0) return <p className="py-8 text-center text-sm text-foreground-400">-</p>;
+
+  const segments: Segment[] = data.map((item, i) => {
+    const raw = String(item[nameKey]);
+
+    return { label: valueLabel(raw) !== raw ? valueLabel(raw) : raw, value: item[dataKey], tone: toneFor(raw, i) };
+  });
+
+  return (
+    <div className="flex flex-col items-center gap-6 sm:flex-row">
+      <Donut segments={segments} size={120} thickness={13}>
+        <span className="text-2xl font-semibold tabular-nums">{total}</span>
+      </Donut>
+      <div className="w-full min-w-0 flex-1">
+        <Legend segments={segments} />
+      </div>
+    </div>
+  );
 }
 
 export default function AnalyticsPage() {
@@ -128,109 +231,6 @@ export default function AnalyticsPage() {
     }
   };
 
-  const StatCard = ({ title, value, icon: Icon, trend, trendValue, color = "primary" }: {
-    title: string;
-    value: string | number;
-    icon: any;
-    trend?: 'up' | 'down';
-    trendValue?: string;
-    color?: string;
-  }) => (
-    <Card>
-      <CardBody className="p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{title}</p>
-            <p className="text-2xl font-bold mt-1">{value}</p>
-            {trend && trendValue && (
-              <div className={`flex items-center mt-2 text-sm ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                {trend === 'up' ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                <span className="ml-1">{trendValue}</span>
-              </div>
-            )}
-          </div>
-          <div className={`p-3 rounded-lg bg-${color}-100 dark:bg-${color}-900/20`}>
-            <Icon className={`text-${color}-600`} size={24} />
-          </div>
-        </div>
-      </CardBody>
-    </Card>
-  );
-
-  const ChartCard = ({ title, children, actions, className }: {
-    title: string;
-    children: React.ReactNode;
-    actions?: React.ReactNode;
-    className?: string;
-  }) => (
-    <Card className={className}>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        {actions}
-      </CardHeader>
-      <CardBody className="pt-0">
-        {children}
-      </CardBody>
-    </Card>
-  );
-
-  const SimpleBarChart = ({ data, dataKey = 'value', nameKey = 'name' }: {
-    data: ChartData[];
-    dataKey?: string;
-    nameKey?: string;
-  }) => (
-    <div className="space-y-3">
-      {data?.map((item, index) => {
-        const maxValue = Math.max(...data.map(d => d[dataKey]));
-        const percentage = (item[dataKey] / maxValue) * 100;
-        
-        return (
-          <div key={index} className="space-y-1">
-            <div className="flex justify-between text-sm">
-              <span>{item[nameKey]}</span>
-              <span className="font-medium">{item[dataKey]}</span>
-            </div>
-            <Progress 
-              value={percentage}
-              className="h-2"
-              color="primary"
-            />
-          </div>
-        );
-      })}
-    </div>
-  );
-
-  const SimplePieChart = ({ data, dataKey = 'value', nameKey = 'name' }: {
-    data: ChartData[];
-    dataKey?: string;
-    nameKey?: string;
-  }) => {
-    const total = data?.reduce((sum, item) => sum + item[dataKey], 0) || 0;
-    
-    return (
-      <div className="space-y-3">
-        {data?.map((item, index) => {
-          const percentage = total > 0 ? ((item[dataKey] / total) * 100).toFixed(1) : 0;
-          const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-purple-500'];
-          
-          return (
-            <div key={index} className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${colors[index % colors.length]}`} />
-                <span className="text-sm">{item[nameKey]}</span>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-medium">{item[dataKey]}</div>
-                <div className="text-xs text-gray-500">{percentage}%</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -244,10 +244,10 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t('analytics.title')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t('analytics.subtitle')}
           </p>
         </div>
@@ -256,14 +256,14 @@ export default function AnalyticsPage() {
             variant="flat"
             onPress={() => loadAnalyticsData()}
             startContent={<RefreshCw size={16} />}
-          >
+         >
             {t('analytics.refresh')}
           </Button>
           <Button
             color="primary"
             onPress={onReportOpen}
             startContent={<Download size={16} />}
-          >
+         >
             {t('analytics.generate_report')}
           </Button>
         </div>
@@ -284,7 +284,7 @@ export default function AnalyticsPage() {
                   setSelectedPeriod(selected);
                   setCustomDateRange(false);
                 }}
-              >
+             >
                 <SelectItem key="7d">{t('analytics.last_7_days')}</SelectItem>
                 <SelectItem key="30d">{t('analytics.last_30_days')}</SelectItem>
                 <SelectItem key="90d">{t('analytics.last_90_days')}</SelectItem>
@@ -297,28 +297,28 @@ export default function AnalyticsPage() {
               variant={customDateRange ? "solid" : "flat"}
               onPress={() => setCustomDateRange(!customDateRange)}
               startContent={<Calendar size={16} />}
-            >
+           >
               {t('analytics.custom_range')}
             </Button>
             
             {customDateRange && (
               <>
-                <Input
-                  size="sm"
-                  type="date"
+                <DateField
+                 
+                  
                   label={t('analytics.start_date')}
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-40"
-                />
-                <Input
-                  size="sm"
-                  type="date"
+ />
+                <DateField
+                 
+                  
                   label={t('analytics.end_date')}
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   className="w-40"
-                />
+ />
               </>
             )}
           </div>
@@ -470,68 +470,68 @@ export default function AnalyticsPage() {
           <div className="space-y-6">
             {/* Financial Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800">
+              <Card>
                 <CardBody className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-green-700 dark:text-green-300 font-medium">{t('analytics.total_revenue')}</p>
-                      <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                      <p className="text-sm text-foreground-500 font-medium">{t('analytics.total_revenue')}</p>
+                      <p className="text-2xl font-semibold text-foreground">
                         {formatCurrency(financialAnalytics?.totalRevenue || 0)}
                       </p>
                     </div>
-                    <div className="p-3 bg-green-200 dark:bg-green-800/30 rounded-lg">
-                      <DollarSign className="text-green-700 dark:text-green-300" size={24} />
+                    <div className="p-3 bg-default-100 rounded-lg">
+                      <DollarSign className="text-foreground-500" size={24} />
                     </div>
                   </div>
                 </CardBody>
               </Card>
 
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800">
+              <Card>
                 <CardBody className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">{t('analytics.monthly_average')}</p>
-                      <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                      <p className="text-sm text-foreground-500 font-medium">{t('analytics.monthly_average')}</p>
+                      <p className="text-2xl font-semibold text-foreground">
                         {formatCurrency((financialAnalytics?.totalRevenue || 0) / 12)}
                       </p>
                     </div>
-                    <div className="p-3 bg-blue-200 dark:bg-blue-800/30 rounded-lg">
-                      <TrendingUp className="text-blue-700 dark:text-blue-300" size={24} />
+                    <div className="p-3 bg-default-100 rounded-lg">
+                      <TrendingUp className="text-foreground-500" size={24} />
                     </div>
                   </div>
                 </CardBody>
               </Card>
 
-              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800">
+              <Card>
                 <CardBody className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-purple-700 dark:text-purple-300 font-medium">{t('analytics.top_service')}</p>
-                      <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
+                      <p className="text-sm text-foreground-500 font-medium">{t('analytics.top_service')}</p>
+                      <p className="text-lg font-semibold text-foreground">
                         {financialAnalytics?.topService?.name || t('analytics.unspecified')}
                       </p>
-                      <p className="text-sm text-purple-600 dark:text-purple-400">
+                      <p className="text-sm text-foreground-500">
                         {formatCurrency(financialAnalytics?.topService?.revenue || 0)}
                       </p>
                     </div>
-                    <div className="p-3 bg-purple-200 dark:bg-purple-800/30 rounded-lg">
-                      <Activity className="text-purple-700 dark:text-purple-300" size={24} />
+                    <div className="p-3 bg-default-100 rounded-lg">
+                      <Activity className="text-foreground-500" size={24} />
                     </div>
                   </div>
                 </CardBody>
               </Card>
 
-              <Card className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800">
+              <Card>
                 <CardBody className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-orange-700 dark:text-orange-300 font-medium">{t('analytics.growth_rate')}</p>
-                      <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
+                      <p className="text-sm text-foreground-500 font-medium">{t('analytics.growth_rate')}</p>
+                      <p className="text-2xl font-semibold text-foreground">
                         +{(financialAnalytics?.growthRate || 0).toFixed(1)}%
                       </p>
                     </div>
-                    <div className="p-3 bg-orange-200 dark:bg-orange-800/30 rounded-lg">
-                      <TrendingUp className="text-orange-700 dark:text-orange-300" size={24} />
+                    <div className="p-3 bg-default-100 rounded-lg">
+                      <TrendingUp className="text-foreground-500" size={24} />
                     </div>
                   </div>
                 </CardBody>
@@ -547,7 +547,7 @@ export default function AnalyticsPage() {
                     {t('analytics.export')}
                   </Button>
                 }
-              >
+             >
                 <div className="space-y-4">
                   {financialAnalytics?.revenueByType?.map((item: any, index: number) => {
                     const maxValue = Math.max(...(financialAnalytics?.revenueByType?.map((d: any) => d.totalRevenue) || [1]));
@@ -581,7 +581,7 @@ export default function AnalyticsPage() {
                     {t('analytics.view_details')}
                   </Button>
                 }
-              >
+             >
                 <div className="space-y-3">
                   {financialAnalytics?.treatmentRevenue?.slice(-6)?.map((item: any, index: number) => {
                     const maxValue = Math.max(...(financialAnalytics?.treatmentRevenue?.map((d: any) => d.totalRevenue) || [1]));
@@ -707,29 +707,29 @@ export default function AnalyticsPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      <p className="text-2xl font-semibold text-foreground-500">
                         {financialAnalytics?.totalTransactions || 0}
                       </p>
-                      <p className="text-sm text-blue-700 dark:text-blue-300">{t('analytics.total_transactions')}</p>
+                      <p className="text-sm text-foreground-500">{t('analytics.total_transactions')}</p>
                     </div>
                     <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      <p className="text-2xl font-semibold text-foreground-500">
                         {formatCurrency((financialAnalytics?.totalRevenue || 0) / (financialAnalytics?.totalTransactions || 1))}
                       </p>
-                      <p className="text-sm text-green-700 dark:text-green-300">{t('analytics.average_transaction')}</p>
+                      <p className="text-sm text-foreground-500">{t('analytics.average_transaction')}</p>
                     </div>
                   </div>
                   
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
                       <span className="text-sm font-medium">{t('analytics.pending_payments')}</span>
-                      <span className="font-bold text-yellow-600 dark:text-yellow-400">
+                      <span className="font-bold text-foreground-500">
                         {formatCurrency(financialAnalytics?.pendingPayments || 0)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
                       <span className="text-sm font-medium">{t('analytics.overdue_payments')}</span>
-                      <span className="font-bold text-red-600 dark:text-red-400">
+                      <span className="font-bold text-foreground-500">
                         {formatCurrency(financialAnalytics?.overduePayments || 0)}
                       </span>
                     </div>
@@ -773,7 +773,7 @@ export default function AnalyticsPage() {
       </Tabs>
 
       {/* Generate Report Modal */}
-      <Modal isOpen={isReportOpen} onClose={onReportClose}>
+      <Modal isOpen={isReportOpen} onClose={onReportClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t('analytics.report_modal_title')}</ModalHeader>
           <ModalBody>
@@ -785,7 +785,7 @@ export default function AnalyticsPage() {
                   const selected = Array.from(keys)[0] as typeof reportType;
                   setReportType(selected);
                 }}
-              >
+             >
                 <SelectItem key="comprehensive">{t('analytics.comprehensive_report')}</SelectItem>
                 <SelectItem key="patients">{t('analytics.patient_report')}</SelectItem>
                 <SelectItem key="appointments">{t('analytics.appointment_report')}</SelectItem>
@@ -793,18 +793,18 @@ export default function AnalyticsPage() {
               </Select>
               
               <div className="grid grid-cols-2 gap-4">
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t('analytics.start_date_label')}
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                />
-                <Input
-                  type="date"
+ />
+                <DateField
+                  
                   label={t('analytics.end_date_label')}
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                />
+ />
               </div>
             </div>
           </ModalBody>
@@ -816,7 +816,7 @@ export default function AnalyticsPage() {
               color="primary" 
               onPress={handleGenerateReport}
               isLoading={reportLoading}
-            >
+           >
               {t('analytics.generate_report_button')}
             </Button>
           </ModalFooter>

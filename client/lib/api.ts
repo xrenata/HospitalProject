@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 // Create axios instance
 const api = axios.create({
@@ -16,6 +16,9 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // which hospital's data this request is about (chosen with the switcher in the sidebar)
+  const hospitalId = localStorage.getItem('hospitalId');
+  if (hospitalId) config.headers['X-Hospital-Id'] = hospitalId;
   return config;
 });
 
@@ -23,8 +26,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const disabled = status === 403 && error.response?.data?.message === 'Account is disabled';
+
+    // access to the chosen hospital was removed (or it no longer exists): fall back to the home hospital
+    if (status === 403 && error.response?.data?.code === 'HOSPITAL_FORBIDDEN' && localStorage.getItem('hospitalId')) {
+      localStorage.removeItem('hospitalId');
+      window.location.reload();
+    }
+
+    if ((status === 401 || disabled) && !window.location.pathname.startsWith('/login')) {
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -37,10 +50,48 @@ export const authAPI = {
     api.post('/auth/login', credentials),
   register: (userData: { username: string; password: string; permLevel: number }) =>
     api.post('/auth/register', userData),
+  me: () => api.get('/auth/me'),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.put('/auth/password', data),
+};
+
+// Access control: roles, permission catalog, per-person access, audit log
+export const accessAPI = {
+  catalog: () => api.get('/access/catalog'),
+  roles: () => api.get('/access/roles'),
+  createRole: (data: { name: string; description?: string; color?: string; permissions: string[] }) =>
+    api.post('/access/roles', data),
+  updateRole: (id: string, data: { name?: string; description?: string; color?: string; permissions?: string[] }) =>
+    api.put(`/access/roles/${id}`, data),
+  deleteRole: (id: string, reassignTo?: string) =>
+    api.delete(`/access/roles/${id}`, { params: reassignTo ? { reassignTo } : undefined }),
+  roleMembers: (id: string, limit = 8) => api.get(`/access/roles/${id}/members`, { params: { limit } }),
+  setStaffHospitals: (id: string, hospitalIds: string[], homeHospital?: string) =>
+    api.put(`/access/staff/${id}/hospitals`, { hospitalIds, homeHospital }),
+  staffAccess: (id: string) => api.get(`/access/staff/${id}`),
+  setStaffAccess: (id: string, data: { roleId?: string; extraPermissions?: string[]; deniedPermissions?: string[] }) =>
+    api.put(`/access/staff/${id}`, data),
+  bulkAssign: (ids: string[], roleId: string) => api.put('/access/staff', { ids, roleId }),
+  audit: (params?: { page?: number; limit?: number; targetType?: string; targetId?: string }) =>
+    api.get('/access/audit', { params }),
+};
+
+// Everything that can be added to a patient's file (appointments, visits, treatments, prescriptions, tests, insurance, vitals)
+export type RecordType = 'appointments' | 'visits' | 'treatments' | 'prescriptions' | 'tests' | 'insurance' | 'vitals';
+export const recordsAPI = {
+  add: (patientId: string, type: RecordType, data: Record<string, any>) =>
+    api.post(`/patient-records/${patientId}/${type}`, data),
+  addLabPanel: (patientId: string, data: Record<string, any>) =>
+    api.post(`/patient-records/${patientId}/lab-panel`, data),
+  update: (patientId: string, type: RecordType, id: string, data: Record<string, any>) =>
+    api.patch(`/patient-records/${patientId}/${type}/${id}`, data),
+  remove: (patientId: string, type: RecordType, id: string) =>
+    api.delete(`/patient-records/${patientId}/${type}/${id}`),
 };
 
 // Patients API
 export const patientsAPI = {
+  getOverview: (id: string) => api.get(`/patients/${id}/overview`),
   getAll: (params?: { 
     page?: number; 
     limit?: number; 
@@ -122,11 +173,16 @@ export const staffAPI = {
     role?: string;
     status?: string;
     department_id?: string;
+    accessRole?: string;
+    sort?: string;
   }) => {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    // dropdowns and name lookups call this without a limit and need the whole directory
+    queryParams.append('limit', String(params?.limit ?? 1000));
     if (params?.search) queryParams.append('search', params.search);
+    if (params?.accessRole) queryParams.append('accessRole', params.accessRole);
+    if (params?.sort) queryParams.append('sort', params.sort);
     if (params?.role) queryParams.append('role', params.role);
     if (params?.status) queryParams.append('status', params.status);
     if (params?.department_id) queryParams.append('department_id', params.department_id);
@@ -212,7 +268,7 @@ export const roomsAPI = {
 
 // Tests API
 export const testsAPI = {
-  getAll: () => api.get('/tests'),
+  getAll: (params?: any) => api.get('/tests', { params }),
   getById: (id: string) => api.get(`/tests/${id}`),
   create: (data: any) => api.post('/tests', data),
   update: (id: string, data: any) => api.put(`/tests/${id}`, data),
@@ -511,6 +567,7 @@ export const hospitalAPI = {
   update: (id: string, data: any) => api.put(`/hospitals/${id}`, data),
   delete: (id: string) => api.delete(`/hospitals/${id}`),
   getStats: () => api.get('/hospitals/stats'),
+  mine: () => api.get('/hospitals/mine'),
 };
 
 // Notifications API
@@ -621,7 +678,10 @@ export const reportsAPI = {
 // Dashboard API
 export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
-  getRecentActivity: () => api.get('/dashboard/recent-activity'),
+  getRecentActivity: (limit?: number) =>
+    api.get('/dashboard/recent-activity', { params: limit ? { limit } : undefined }),
+  getSummary: (entity: string) => api.get(`/dashboard/summary/${entity}`),
+  getTrends: (days = 14) => api.get('/dashboard/trends', { params: { days } }),
   getOverview: () => api.get('/dashboard/overview'),
   getAlerts: () => api.get('/dashboard/alerts'),
   markAlertAsRead: (id: string) => api.patch(`/dashboard/alerts/${id}/read`),

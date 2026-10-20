@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -22,8 +21,9 @@ import {
   useDisclosure,
   Select,
   SelectItem,
-  Textarea,
-} from "@heroui/react";
+  Textarea
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { MessageSquare, Search, Trash2, Edit, Plus, Eye, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -34,9 +34,10 @@ import { formatDate, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 import PatientAutocomplete from "@/components/PatientAutocomplete";
 
+import DataSummary from "@/components/DataSummary";
 export default function ComplaintsPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
+  const { user, can, canWrite } = useAuth();
+  const { t, te } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -207,7 +208,7 @@ export default function ComplaintsPage() {
   };
 
   const handleEditComplaint = (complaint: Complaint) => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('complaints')) {
       toast.error(t("complaints.insufficient_permissions"));
       return;
     }
@@ -236,7 +237,7 @@ export default function ComplaintsPage() {
   };
 
   const handleDeleteComplaint = (complaint: Complaint) => {
-    if (getPermissionLevel(user) < 3) {
+    if (!can('complaints.delete')) {
       toast.error(t("complaints.insufficient_permissions_delete"));
       return;
     }
@@ -308,7 +309,7 @@ export default function ComplaintsPage() {
   };
 
   const handleStatusChange = async (complaintId: string, newStatus: string) => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('complaints')) {
       toast.error(t("complaints.insufficient_permissions"));
       return;
     }
@@ -380,10 +381,10 @@ export default function ComplaintsPage() {
             <p className="font-medium text-sm">{complaint.complaint_text?.substring(0, 50)}...</p>
             <div className="flex gap-1 mt-1">
               <Chip color={getCategoryColor(complaint.category || "")} size="sm" variant="flat">
-                {t(`complaints.${complaint.category}`) || complaint.category}
+                {te(`complaints.${complaint.category}`, complaint.category)}
               </Chip>
               <Chip color={getPriorityColor(complaint.priority || "")} size="sm" variant="flat">
-                {t(`complaints.${complaint.priority}`) || complaint.priority}
+                {te(`complaints.${complaint.priority}`, complaint.priority)}
               </Chip>
             </div>
           </div>
@@ -392,8 +393,8 @@ export default function ComplaintsPage() {
         return getStaffName(complaint.assigned_to || "");
       case "status":
         return (
-          <Chip color={getStatusColor(complaint.status || "")} size="sm">
-            {t(`complaints.${complaint.status}`) || complaint.status || "open"}
+          <Chip variant="flat" color={getStatusColor(complaint.status || "")} size="sm">
+            {te(`complaints.${complaint.status}`, complaint.status || "open")}
           </Chip>
         );
       case "date":
@@ -402,12 +403,12 @@ export default function ComplaintsPage() {
         const complaintId = complaint.complaint_id || complaint._id || complaint.id?.toString() || "";
         return (
           <div className="flex gap-2 items-center">
-            <Button size="sm" color="secondary" variant="flat" onPress={() => handleViewComplaint(complaint)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleViewComplaint(complaint)}>
               <Eye size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('complaints') && (
               <>
-                <Button size="sm" color="primary" variant="flat" onPress={() => handleEditComplaint(complaint)}>
+                <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditComplaint(complaint)}>
                   <Edit size={16} />
                 </Button>
                 <Select
@@ -421,14 +422,14 @@ export default function ComplaintsPage() {
                       handleStatusChange(complaintId, newStatus);
                     }
                   }}
-                >
+               >
                   <SelectItem key="open">{t("complaints.open")}</SelectItem>
                   <SelectItem key="in-progress">{t("complaints.in_progress")}</SelectItem>
                   <SelectItem key="resolved">{t("complaints.resolved")}</SelectItem>
                   <SelectItem key="closed">{t("complaints.closed")}</SelectItem>
                 </Select>
-                {getPermissionLevel(user) >= 3 && (
-                  <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteComplaint(complaint)}>
+                {can('complaints.delete') && (
+                  <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeleteComplaint(complaint)}>
                     <Trash2 size={16} />
                   </Button>
                 )}
@@ -455,10 +456,10 @@ export default function ComplaintsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("complaints.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("complaints.subtitle")}
           </p>
         </div>
@@ -467,6 +468,8 @@ export default function ComplaintsPage() {
           {t("complaints.add_complaint")}
         </Button>
       </div>
+
+      <DataSummary entity="complaints" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -485,7 +488,7 @@ export default function ComplaintsPage() {
               className="lg:w-40"
               selectedKeys={statusFilter !== "all" ? [statusFilter] : []}
               onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("complaints.all_status")}</SelectItem>
               <SelectItem key="open">{t("complaints.open")}</SelectItem>
               <SelectItem key="in-progress">{t("complaints.in_progress")}</SelectItem>
@@ -497,26 +500,26 @@ export default function ComplaintsPage() {
               className="lg:w-40"
               selectedKeys={categoryFilter !== "all" ? [categoryFilter] : []}
               onSelectionChange={(keys) => setCategoryFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("complaints.all_categories")}</SelectItem>
               {complaintCategories.map((category) => (
                 <SelectItem key={category}>
-                  {t(`complaints.${category}`)}
+                  {te(`complaints.${category}`)}
                 </SelectItem>
-              ))}
+              )) as any}
             </Select>
             <Select
               placeholder={t("complaints.filter_by_priority")}
               className="lg:w-40"
               selectedKeys={priorityFilter !== "all" ? [priorityFilter] : []}
               onSelectionChange={(keys) => setPriorityFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("complaints.all_priorities")}</SelectItem>
               {priorityLevels.map((priority) => (
                 <SelectItem key={priority}>
-                  {t(`complaints.${priority}`)}
+                  {te(`complaints.${priority}`)}
                 </SelectItem>
-              ))}
+              )) as any}
             </Select>
           </div>
         </CardBody>
@@ -525,7 +528,7 @@ export default function ComplaintsPage() {
       {/* Complaints Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Complaints table">
+          <Table aria-label="Complaints table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -535,7 +538,7 @@ export default function ComplaintsPage() {
               isLoading={loading}
               loadingContent={t("complaints.loading_complaints")}
               emptyContent={t("complaints.no_complaints")}
-            >
+           >
               {complaints.map((complaint) => (
                 <TableRow key={complaint.id || complaint.complaint_id}>
                   {columns.map((column) => (
@@ -549,8 +552,8 @@ export default function ComplaintsPage() {
           </Table>
 
           {complaints.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center p-4">
-              <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} />
+            <div className="flex justify-center border-t border-divider p-3">
+              <Pagination isCompact showControls total={totalPages} page={currentPage} onChange={setCurrentPage} />
             </div>
           )}
         </CardBody>
@@ -576,42 +579,42 @@ export default function ComplaintsPage() {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("complaints.category")}
                   placeholder={t("complaints.select_category")}
                   selectedKeys={formData.category ? [formData.category] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, category: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   {complaintCategories.map((category) => (
                     <SelectItem key={category}>
-                      {t(`complaints.${category}`)}
+                      {te(`complaints.${category}`)}
                     </SelectItem>
                   ))}
                 </Select>
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("complaints.priority")}
                   placeholder={t("complaints.select_priority")}
                   selectedKeys={formData.priority ? [formData.priority] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, priority: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   {priorityLevels.map((priority) => (
                     <SelectItem key={priority}>
-                      {t(`complaints.${priority}`)}
+                      {te(`complaints.${priority}`)}
                     </SelectItem>
                   ))}
                 </Select>
 
-                {getPermissionLevel(user) >= 2 && (
-                  <Select
+                {canWrite('complaints') && (
+                  <Select labelPlacement="outside" variant="bordered"
                     label={t("complaints.assign_to")}
                     placeholder={t("complaints.select_staff")}
                     selectedKeys={formData.assigned_to ? [formData.assigned_to] : []}
                     onSelectionChange={(keys) => setFormData({ ...formData, assigned_to: Array.from(keys)[0] as string || "" })}
                     className="md:col-span-2"
-                  >
+                 >
                     {staff.filter(s => s.status === 'active').map((staffMember) => (
                       <SelectItem key={staffMember._id || staffMember.staff_id || ""}>
                         {staffMember.name} ({staffMember.role})
@@ -621,7 +624,7 @@ export default function ComplaintsPage() {
                 )}
               </div>
 
-              <Textarea
+              <Textarea labelPlacement="outside" variant="bordered"
                 label={t("complaints.complaint_text")}
                 placeholder={t("complaints.complaint_text_placeholder")}
                 value={formData.complaint_text}
@@ -631,7 +634,7 @@ export default function ComplaintsPage() {
               />
 
               {!isAddMode && (
-                <Textarea
+                <Textarea labelPlacement="outside" variant="bordered"
                   label={t("complaints.resolution")}
                   placeholder={t("complaints.resolution_placeholder")}
                   value={formData.resolution}
@@ -642,7 +645,7 @@ export default function ComplaintsPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
+            <Button variant="light" onPress={onClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={handleSubmit}>
@@ -653,7 +656,7 @@ export default function ComplaintsPage() {
       </Modal>
 
       {/* View Complaint Details Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("complaints.complaint_details")}</ModalHeader>
           <ModalBody>
@@ -670,20 +673,20 @@ export default function ComplaintsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("complaints.category")}</p>
-                    <Chip color={getCategoryColor(complaintToView.category || "")} size="sm">
-                      {t(`complaints.${complaintToView.category}`) || complaintToView.category}
+                    <Chip variant="flat" color={getCategoryColor(complaintToView.category || "")} size="sm">
+                      {te(`complaints.${complaintToView.category}`, complaintToView.category)}
                     </Chip>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("complaints.priority")}</p>
-                    <Chip color={getPriorityColor(complaintToView.priority || "")} size="sm">
-                      {t(`complaints.${complaintToView.priority}`) || complaintToView.priority}
+                    <Chip variant="flat" color={getPriorityColor(complaintToView.priority || "")} size="sm">
+                      {te(`complaints.${complaintToView.priority}`, complaintToView.priority)}
                     </Chip>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("common.status")}</p>
-                    <Chip color={getStatusColor(complaintToView.status || "")} size="sm">
-                      {t(`complaints.${complaintToView.status}`) || complaintToView.status}
+                    <Chip variant="flat" color={getStatusColor(complaintToView.status || "")} size="sm">
+                      {te(`complaints.${complaintToView.status}`, complaintToView.status)}
                     </Chip>
                   </div>
                   <div>
@@ -715,14 +718,14 @@ export default function ComplaintsPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("complaints.delete_complaint")}</ModalHeader>
           <ModalBody>
             <p>{t("complaints.delete_confirmation")}</p>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onDeleteClose}>
+            <Button variant="light" onPress={onDeleteClose}>
               {t("common.cancel")}
             </Button>
             <Button color="danger" onPress={confirmDeleteComplaint}>

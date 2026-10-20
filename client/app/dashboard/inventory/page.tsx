@@ -1,489 +1,299 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import {
-  Card, CardBody, Button, Input, Table, TableHeader, TableColumn, 
-  TableBody, TableRow, TableCell, Chip, Pagination, Modal, ModalContent, 
-  ModalHeader, ModalBody, ModalFooter, useDisclosure, Select, SelectItem,
-  Textarea, Tabs, Tab, Progress
-} from '@heroui/react';
-import { Wrench, Pill, DollarSign, Search, Trash2 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useI18n } from '@/contexts/I18nContext';
-import { Equipment, Medication } from '@/types';
-import { formatDate, getPermissionLevel, formatCurrency } from '@/lib/utils';
+import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button, Card, CardBody, Skeleton } from "@heroui/react";
+import { AlertTriangle, CalendarClock, DollarSign, Pill, Wrench } from "lucide-react";
+
+import { Chip } from "@/components/Chip";
+import { Donut, Legend, type Segment, type Tone } from "@/components/charts";
+import { useI18n } from "@/contexts/I18nContext";
+import { equipmentAPI, medicationsAPI } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
+
+const LOW_STOCK = 50; // units at or below which a medication counts as low
+const EXPIRY_DAYS = 90; // how far ahead "expiring soon" looks
+const DAY = 86400000;
+
+interface Med {
+  _id: string;
+  name: string;
+  dosage?: string;
+  category?: string;
+  stockQuantity?: number;
+  price?: number;
+  expiryDate?: string;
+}
+
+interface Eq {
+  _id: string;
+  name: string;
+  manufacturer?: string;
+  status?: string;
+  cost?: number;
+}
+
+const unwrap = (res: any, key: string): any[] => res?.data?.[key] ?? res?.data?.data ?? (Array.isArray(res?.data) ? res.data : []);
+
+function Stat({
+  label,
+  value,
+  icon,
+  tone = "default",
+  loading,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon: React.ReactNode;
+  tone?: Tone;
+  loading: boolean;
+}) {
+  return (
+    <Card className="w-full">
+      <CardBody className="gap-3 p-5">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-foreground-500">{label}</span>
+          <span className={tone === "default" ? "text-foreground-400" : `text-${tone}`}>{icon}</span>
+        </div>
+        <div className="truncate text-2xl font-semibold tabular-nums">
+          {loading ? <Skeleton className="h-8 w-20 rounded-md" /> : value}
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
 
 export default function InventoryPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
-  const [medications, setMedications] = useState<Medication[]>([]);
+  const { t, language } = useI18n();
+  const router = useRouter();
+  const [meds, setMeds] = useState<Med[]>([]);
+  const [equipment, setEquipment] = useState<Eq[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('equipment');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const [isAddMode, setIsAddMode] = useState(false);
-
-  // Mock equipment data
-  const mockEquipment: Equipment[] = [
-    {
-      equipment_id: '1',
-      name: 'MRI Scanner',
-      description: 'High-resolution 3T MRI machine',
-      department_id: '2',
-      manufacturer: 'Siemens',
-      model: 'MAGNETOM Vida',
-      purchase_date: '2022-01-15',
-      status: 'operational',
-      cost: 2500000
-    },
-    {
-      equipment_id: '2',
-      name: 'Ventilator',
-      description: 'ICU ventilator for critical care',
-      department_id: '4',
-      manufacturer: 'Hamilton Medical',
-      model: 'HAMILTON-C6',
-      purchase_date: '2021-03-20',
-      status: 'operational',
-      cost: 45000
-    },
-    {
-      equipment_id: '3',
-      name: 'X-Ray Machine',
-      description: 'Digital radiography system',
-      department_id: '3',
-      manufacturer: 'GE Healthcare',
-      model: 'Discovery XR656',
-      purchase_date: '2020-06-10',
-      status: 'maintenance',
-      cost: 180000
-    }
-  ];
-
-  // Mock medication data
-  const mockMedications: Medication[] = [
-    {
-      medication_id: '1',
-      name: 'Paracetamol',
-      description: 'Pain reliever and fever reducer',
-      dosage: '500mg',
-      manufacturer: 'Generic Pharmaceuticals',
-      expiry_date: '2025-12-31',
-      stock_quantity: 5000,
-      price: 0.15,
-      category: 'Pain Management'
-    },
-    {
-      medication_id: '2',
-      name: 'Amoxicillin',
-      description: 'Broad-spectrum antibiotic',
-      dosage: '250mg',
-      manufacturer: 'MediCorp Pharma',
-      expiry_date: '2025-06-30',
-      stock_quantity: 1200,
-      price: 0.85,
-      category: 'Antibiotics'
-    },
-    {
-      medication_id: '3',
-      name: 'Insulin',
-      description: 'Fast-acting insulin for diabetes',
-      dosage: '100 units/ml',
-      manufacturer: 'Novo Nordisk',
-      expiry_date: '2024-12-31',
-      stock_quantity: 150,
-      price: 25.50,
-      category: 'Diabetes'
-    }
-  ];
 
   useEffect(() => {
-    loadData();
-  }, [activeTab, searchTerm, statusFilter]);
+    Promise.all([
+      medicationsAPI.getAll({ limit: 200 }).catch(() => null),
+      equipmentAPI.getAll({ limit: 200 }).catch(() => null),
+    ])
+      .then(([m, e]) => {
+        setMeds(unwrap(m, "medications"));
+        setEquipment(unwrap(e, "equipment"));
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-  const loadData = () => {
-    setLoading(true);
-    try {
-      if (activeTab === 'equipment') {
-        let filtered = mockEquipment;
-        if (searchTerm) {
-          filtered = filtered.filter(item => 
-            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.manufacturer.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-        }
-        if (statusFilter !== 'all') {
-          filtered = filtered.filter(item => item.status === statusFilter);
-        }
-        setEquipment(filtered);
-      } else {
-        let filtered = mockMedications;
-        if (searchTerm) {
-          filtered = filtered.filter(item => 
-            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.category.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-        }
-        setMedications(filtered);
-      }
-      setTotalPages(1);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const data = useMemo(() => {
+    const now = Date.now();
+    const lowStock = meds.filter((m) => (m.stockQuantity ?? 0) <= LOW_STOCK);
+    const expiring = meds
+      .filter((m) => m.expiryDate && new Date(m.expiryDate).getTime() - now <= EXPIRY_DAYS * DAY)
+      .sort((a, b) => new Date(a.expiryDate!).getTime() - new Date(b.expiryDate!).getTime());
+    const stockValue = meds.reduce((sum, m) => sum + (m.stockQuantity ?? 0) * (m.price ?? 0), 0);
+    const lowest = [...meds].sort((a, b) => (a.stockQuantity ?? 0) - (b.stockQuantity ?? 0)).slice(0, 8);
+    const max = Math.max(...lowest.map((m) => m.stockQuantity ?? 0), LOW_STOCK * 2, 1);
+    const attention = equipment.filter((e) => e.status && e.status !== "operational");
 
-  const handleAdd = () => {
-    setIsAddMode(true);
-    onOpen();
-  };
+    const byStatus = new Map<string, number>();
 
-  const handleEdit = (item: any) => {
-    setIsAddMode(false);
-    onOpen();
-  };
+    equipment.forEach((e) => byStatus.set(e.status ?? "unknown", (byStatus.get(e.status ?? "unknown") ?? 0) + 1));
+    const tones: Record<string, Tone> = {
+      operational: "success",
+      maintenance: "warning",
+      "out-of-order": "danger",
+      retired: "default",
+    };
+    const segments: Segment[] = Array.from(byStatus.entries()).map(([status, value]) => ({
+      label: t(`values.${status}`) === `values.${status}` ? status : t(`values.${status}`),
+      value,
+      tone: tones[status] ?? "primary",
+    }));
 
-  const handleSubmit = () => {
-    alert(`${activeTab === 'equipment' ? 'Equipment' : 'Medication'} ${isAddMode ? 'added' : 'updated'} successfully!`);
-    onClose();
-    loadData();
-  };
+    return { lowStock, expiring, stockValue, lowest, max, attention, segments };
+  }, [meds, equipment, t]);
 
-  const handleDelete = (itemId: string) => {
-    if (confirm('Are you sure you want to delete this item?')) {
-      alert('Item deleted successfully!');
-      loadData();
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'operational': return 'success';
-      case 'maintenance': return 'warning';
-      case 'out-of-order': return 'danger';
-      default: return 'default';
-    }
-  };
-
-  const getStockLevel = (quantity: number) => {
-    if (quantity <= 100) return 'danger';
-    if (quantity <= 500) return 'warning';
-    return 'success';
-  };
-
-  const renderEquipmentCell = (equipment: Equipment, columnKey: string) => {
-    switch (columnKey) {
-      case 'name':
-        return (
-          <div>
-            <p className="font-medium">{equipment.name}</p>
-            <p className="text-sm text-gray-500">{equipment.manufacturer}</p>
-          </div>
-        );
-      case 'model':
-        return equipment.model;
-      case 'department':
-        return `Dept ${equipment.department_id}`;
-      case 'cost':
-        return formatCurrency(equipment.cost);
-      case 'status':
-        return (
-          <Chip color={getStatusColor(equipment.status)} size="sm">
-            {equipment.status}
-          </Chip>
-        );
-      case 'actions':
-        return (
-          <div className="flex gap-2">
-            <Button size="sm" color="primary" variant="flat" onPress={() => handleEdit(equipment)}>
-              ✏️
-            </Button>
-            {getPermissionLevel(user) >= 3 && (
-              <Button size="sm" color="danger" variant="flat" onPress={() => handleDelete(equipment.equipment_id)}>
-                🗑️
-              </Button>
-            )}
-          </div>
-        );
-      default:
-        return equipment[columnKey as keyof Equipment];
-    }
-  };
-
-  const renderMedicationCell = (medication: Medication, columnKey: string) => {
-    switch (columnKey) {
-      case 'name':
-        return (
-          <div>
-            <p className="font-medium">{medication.name}</p>
-            <p className="text-sm text-gray-500">{medication.dosage}</p>
-          </div>
-        );
-      case 'stock':
-        return (
-          <div>
-            <p>{medication.stock_quantity} units</p>
-            <Progress 
-              value={(medication.stock_quantity / 1000) * 100} 
-              color={getStockLevel(medication.stock_quantity)}
-              size="sm"
-              className="mt-1"
-            />
-          </div>
-        );
-      case 'price':
-        return formatCurrency(medication.price);
-      case 'expiry':
-        return formatDate(medication.expiry_date);
-      case 'category':
-        return (
-          <Chip size="sm" variant="flat">
-            {medication.category}
-          </Chip>
-        );
-      case 'actions':
-        return (
-          <div className="flex gap-2">
-            <Button size="sm" color="primary" variant="flat" onPress={() => handleEdit(medication)}>
-              ✏️
-            </Button>
-            {getPermissionLevel(user) >= 2 && (
-              <Button size="sm" color="danger" variant="flat" onPress={() => handleDelete(medication.medication_id)}>
-                🗑️
-              </Button>
-            )}
-          </div>
-        );
-      default:
-        return medication[columnKey as keyof Medication];
-    }
-  };
-
-  const equipmentColumns = [
-    { key: 'name', label: 'Equipment' },
-    { key: 'model', label: 'Model' },
-    { key: 'department', label: 'Department' },
-    { key: 'cost', label: 'Cost' },
-    { key: 'status', label: 'Status' },
-    { key: 'actions', label: 'Actions' }
-  ];
-
-  const medicationColumns = [
-    { key: 'name', label: 'Medication' },
-    { key: 'stock', label: 'Stock Level' },
-    { key: 'price', label: 'Price' },
-    { key: 'expiry', label: 'Expiry' },
-    { key: 'category', label: 'Category' },
-    { key: 'actions', label: 'Actions' }
-  ];
+  const locale = language === "tr" ? "tr-TR" : "en-US";
+  const daysLeft = (iso?: string) => (iso ? Math.ceil((new Date(iso).getTime() - Date.now()) / DAY) : 0);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {t('inventory.title')}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {t('inventory.subtitle')}
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("stock.title")}</h1>
+          <p className="mt-1 text-sm text-foreground-500">{t("stock.subtitle")}</p>
         </div>
-        {getPermissionLevel(user) >= 2 && (
-          <Button color="primary" onPress={handleAdd}>
-            <span className="mr-2">{activeTab === 'equipment' ? <Wrench size={20} /> : <Pill size={20} />}</span>
-            {activeTab === 'equipment' ? t('inventory.add_equipment') : t('inventory.add_medication')}
+        <div className="flex gap-2">
+          <Button size="sm" variant="bordered" onPress={() => router.push("/dashboard/medications")}>
+            {t("navigation.medications")}
           </Button>
-        )}
+          <Button size="sm" variant="bordered" onPress={() => router.push("/dashboard/equipment")}>
+            {t("navigation.equipment")}
+          </Button>
+        </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardBody className="p-6 text-center">
-            <div className="text-2xl mb-2"><Wrench size={32} /></div>
-            <h3 className="text-lg font-semibold">{t('inventory.equipment')}</h3>
-            <p className="text-2xl font-bold text-blue-600">{equipment.length}</p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
+        <Stat icon={<Pill size={18} />} label={t("stock.medications")} loading={loading} value={meds.length} />
+        <Stat
+          icon={<AlertTriangle size={18} />}
+          label={t("stock.low_stock")}
+          loading={loading}
+          tone={data.lowStock.length ? "warning" : "default"}
+          value={data.lowStock.length}
+        />
+        <Stat
+          icon={<CalendarClock size={18} />}
+          label={t("stock.expiring_soon")}
+          loading={loading}
+          tone={data.expiring.length ? "danger" : "default"}
+          value={data.expiring.length}
+        />
+        <Stat
+          icon={<DollarSign size={18} />}
+          label={t("stock.stock_value")}
+          loading={loading}
+          value={formatCurrency(data.stockValue)}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 sm:gap-4">
+        <Card className="w-full lg:col-span-2">
+          <CardBody className="gap-5 p-5">
+            <div>
+              <h3 className="text-base font-semibold">{t("stock.stock_levels")}</h3>
+              <p className="text-xs text-foreground-500">{t("stock.stock_levels_hint")}</p>
+            </div>
+            {loading ? (
+              <Skeleton className="h-56 w-full rounded-xl" />
+            ) : data.lowest.length === 0 ? (
+              <p className="py-10 text-center text-sm text-foreground-400">{t("summary.no_data")}</p>
+            ) : (
+              <ul className="space-y-4">
+                {data.lowest.map((m) => {
+                  const qty = m.stockQuantity ?? 0;
+                  const low = qty <= LOW_STOCK;
+
+                  return (
+                    <li key={m._id}>
+                      <div className="mb-1.5 flex items-baseline justify-between gap-4 text-sm">
+                        <span className="truncate font-medium">
+                          {m.name}
+                          {m.dosage && <span className="ml-2 font-normal text-foreground-400">{m.dosage}</span>}
+                        </span>
+                        <span className={`shrink-0 tabular-nums ${low ? "font-medium text-warning" : "text-foreground-500"}`}>
+                          {qty} {t("stock.units")}
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-default-100">
+                        <div
+                          className={`h-full rounded-full ${low ? "bg-warning" : "bg-primary"}`}
+                          style={{ width: `${Math.max((qty / data.max) * 100, qty ? 2 : 0)}%` }}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </CardBody>
         </Card>
-        <Card>
-          <CardBody className="p-6 text-center">
-            <div className="text-2xl mb-2"><Pill size={32} /></div>
-            <h3 className="text-lg font-semibold">{t('inventory.medications')}</h3>
-            <p className="text-2xl font-bold text-green-600">{medications.length}</p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="p-6 text-center">
-            <div className="text-2xl mb-2">⚠️</div>
-            <h3 className="text-lg font-semibold">{t('inventory.low_stock')}</h3>
-            <p className="text-2xl font-bold text-yellow-600">
-              {medications.filter(m => m.stock_quantity <= 100).length}
-            </p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="p-6 text-center">
-            <div className="text-2xl mb-2"><DollarSign size={32} /></div>
-            <h3 className="text-lg font-semibold">{t('inventory.total_value')}</h3>
-            <p className="text-2xl font-bold text-purple-600">
-              {formatCurrency(equipment.reduce((sum, item) => sum + item.cost, 0))}
-            </p>
+
+        <Card className="w-full">
+          <CardBody className="gap-5 p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-semibold">{t("stock.equipment_status")}</h3>
+                <p className="text-xs text-foreground-500">{equipment.length} {t("stock.items")}</p>
+              </div>
+              <span className="text-foreground-400">
+                <Wrench size={18} />
+              </span>
+            </div>
+            {loading ? (
+              <Skeleton className="h-40 w-full rounded-xl" />
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center gap-6">
+                <Donut segments={data.segments}>
+                  <span className="text-3xl font-semibold tabular-nums">{equipment.length}</span>
+                  <span className="text-xs text-foreground-500">{t("stock.items")}</span>
+                </Donut>
+                <div className="w-full max-w-[12rem]">
+                  <Legend segments={data.segments} />
+                </div>
+              </div>
+            )}
           </CardBody>
         </Card>
       </div>
 
-      {/* Search and Filters */}
-      <Card>
-        <CardBody className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Input
-              placeholder={t('inventory.search_placeholder', { type: activeTab })}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
-              startContent={<Search size={16} />}
-            />
-            {activeTab === 'equipment' && (
-              <Select
-                placeholder={t('inventory.filter_by_status')}
-                className="sm:w-48"
-                selectedKeys={statusFilter !== 'all' ? [statusFilter] : []}
-                onSelectionChange={(keys) => {
-                  const selectedKey = Array.from(keys)[0] as string;
-                  setStatusFilter(selectedKey || 'all');
-                }}
-              >
-                <SelectItem key="all">{t('inventory.all_status')}</SelectItem>
-                <SelectItem key="operational">{t('inventory.operational')}</SelectItem>
-                <SelectItem key="maintenance">{t('inventory.maintenance')}</SelectItem>
-                <SelectItem key="out-of-order">{t('inventory.out_of_order')}</SelectItem>
-              </Select>
+      <Card className="w-full">
+        <CardBody className="p-0">
+          <div className="px-5 py-4">
+            <h3 className="text-base font-semibold">{t("stock.attention")}</h3>
+          </div>
+          <div className="border-t border-divider">
+            {loading ? (
+              <div className="space-y-3 p-5">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : data.lowStock.length + data.expiring.length + data.attention.length === 0 ? (
+              <p className="px-5 py-10 text-center text-sm text-foreground-400">{t("stock.no_issues")}</p>
+            ) : (
+              <ul className="divide-y divide-divider">
+                {data.lowStock.map((m) => (
+                  <li key={`low-${m._id}`} className="flex items-center gap-3 px-5 py-3">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-warning/10 text-warning">
+                      <AlertTriangle size={15} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{m.name}</p>
+                      <p className="text-xs text-foreground-500">
+                        {t("stock.low_stock")} · {m.stockQuantity ?? 0} {t("stock.units")}
+                      </p>
+                    </div>
+                    <Chip color="warning" size="sm">{t("stock.low_stock")}</Chip>
+                  </li>
+                ))}
+                {data.expiring.map((m) => {
+                  const left = daysLeft(m.expiryDate);
+
+                  return (
+                    <li key={`exp-${m._id}`} className="flex items-center gap-3 px-5 py-3">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-danger/10 text-danger">
+                        <CalendarClock size={15} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{m.name}</p>
+                        <p className="text-xs text-foreground-500">
+                          {m.expiryDate ? new Date(m.expiryDate).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" }) : ""}
+                        </p>
+                      </div>
+                      <Chip color="danger" size="sm">
+                        {left < 0 ? t("stock.expired") : t("stock.expires_in").replace("{n}", String(left))}
+                      </Chip>
+                    </li>
+                  );
+                })}
+                {data.attention.map((e) => (
+                  <li key={`eq-${e._id}`} className="flex items-center gap-3 px-5 py-3">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-default-100 text-foreground-500">
+                      <Wrench size={15} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{e.name}</p>
+                      <p className="text-xs text-foreground-500">{e.manufacturer}</p>
+                    </div>
+                    <Chip color={e.status === "out-of-order" ? "danger" : "warning"} size="sm">
+                      {e.status ?? ""}
+                    </Chip>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </CardBody>
       </Card>
-
-      {/* Tabs */}
-      <Card>
-        <CardBody className="p-0">
-          <Tabs 
-            selectedKey={activeTab} 
-            onSelectionChange={(key) => setActiveTab(key as string)}
-            className="p-6"
-          >
-            <Tab key="equipment" title={<span className="flex items-center gap-2"><Wrench size={16} /> Equipment</span>}>
-              <div className="mt-4">
-                <Table aria-label="Equipment table">
-                  <TableHeader>
-                    {equipmentColumns.map((column) => (
-                      <TableColumn key={column.key}>{column.label}</TableColumn>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {equipment.map((item) => (
-                      <TableRow key={item.equipment_id}>
-                        {equipmentColumns.map((column) => (
-                          <TableCell key={column.key}>
-                            {renderEquipmentCell(item, column.key)}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </Tab>
-            
-            <Tab key="medications" title={<span className="flex items-center gap-2"><Pill size={16} /> Medications</span>}>
-              <div className="mt-4">
-                <Table aria-label="Medications table">
-                  <TableHeader>
-                    {medicationColumns.map((column) => (
-                      <TableColumn key={column.key}>{column.label}</TableColumn>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {medications.map((item) => (
-                      <TableRow key={item.medication_id}>
-                        {medicationColumns.map((column) => (
-                          <TableCell key={column.key}>
-                            {renderMedicationCell(item, column.key)}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </Tab>
-          </Tabs>
-        </CardBody>
-      </Card>
-
-      {/* Simple Add/Edit Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="2xl">
-        <ModalContent>
-          <ModalHeader>
-            {isAddMode ? 'Add New' : 'Edit'} {activeTab === 'equipment' ? 'Equipment' : 'Medication'}
-          </ModalHeader>
-          <ModalBody>
-            <div className="space-y-4">
-              <Input label="Name" placeholder="Enter name" />
-              <Input label="Manufacturer" placeholder="Enter manufacturer" />
-              {activeTab === 'equipment' ? (
-                <>
-                  <Input label="Model" placeholder="Enter model" />
-                  <Input 
-                    label="Cost" 
-                    type="number" 
-                    startContent="$" 
-                    onChange={(e) => {
-                      // Sadece rakam ve nokta karakterine izin ver
-                      e.target.value = e.target.value.replace(/[^0-9.]/g, '');
-                    }}
-                    placeholder="0.00"
-                  />
-                </>
-              ) : (
-                <>
-                  <Input 
-                    label="Stock Quantity" 
-                    type="number" 
-                    onChange={(e) => {
-                      // Sadece rakam karakterine izin ver
-                      e.target.value = e.target.value.replace(/[^0-9]/g, '');
-                    }}
-                    placeholder="100"
-                  />
-                  <Input 
-                    label="Price" 
-                    type="number" 
-                    startContent="$" 
-                    onChange={(e) => {
-                      // Sadece rakam ve nokta karakterine izin ver
-                      e.target.value = e.target.value.replace(/[^0-9.]/g, '');
-                    }}
-                    placeholder="0.00"
-                  />
-                </>
-              )}
-              <Textarea label="Description" placeholder="Enter description" />
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="flat" onPress={onClose}>Cancel</Button>
-            <Button color="primary" onPress={handleSubmit}>
-              {isAddMode ? 'Add' : 'Update'}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
     </div>
   );
 }

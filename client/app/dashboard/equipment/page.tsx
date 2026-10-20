@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -22,8 +21,9 @@ import {
   useDisclosure,
   Select,
   SelectItem,
-  Textarea,
-} from "@heroui/react";
+  Textarea
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { Zap, Search, Trash2, Edit, Plus, Eye, AlertTriangle, Wrench } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -33,9 +33,11 @@ import { Equipment, Department, Room } from "@/types";
 import { formatDate, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 
+import DataSummary from "@/components/DataSummary";
+import DateField from '@/components/DateField';
 export default function EquipmentPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
+  const { user, can, canWrite } = useAuth();
+  const { t, te } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -152,7 +154,7 @@ export default function EquipmentPage() {
   };
 
   const handleAddEquipment = () => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('equipment')) {
       toast.error(t("equipment.insufficient_permissions"));
       return;
     }
@@ -175,7 +177,7 @@ export default function EquipmentPage() {
   };
 
   const handleEditEquipment = (equipment: Equipment) => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('equipment')) {
       toast.error(t("equipment.insufficient_permissions"));
       return;
     }
@@ -205,7 +207,7 @@ export default function EquipmentPage() {
   };
 
   const handleDeleteEquipment = (equipment: Equipment) => {
-    if (getPermissionLevel(user) < 3) {
+    if (!can('equipment.delete')) {
       toast.error(t("equipment.insufficient_permissions_delete"));
       return;
     }
@@ -285,7 +287,7 @@ export default function EquipmentPage() {
   };
 
   const handleStatusChange = async (equipmentId: string, newStatus: string) => {
-    if (getPermissionLevel(user) < 2) {
+    if (!canWrite('equipment')) {
       toast.error(t("equipment.insufficient_permissions"));
       return;
     }
@@ -382,20 +384,20 @@ export default function EquipmentPage() {
         );
       case "status":
         return (
-          <Chip color={getStatusColor(equipment.status || "")} size="sm">
-            {t(`equipment.${equipment.status}`) || equipment.status || "operational"}
+          <Chip variant="flat" color={getStatusColor(equipment.status || "")} size="sm">
+            {te(`equipment.${equipment.status}`, equipment.status || "operational")}
           </Chip>
         );
       case "actions":
         const equipmentId = equipment.equipment_id || equipment._id || equipment.id?.toString() || "";
         return (
           <div className="flex gap-2 items-center">
-            <Button size="sm" color="secondary" variant="flat" onPress={() => handleViewEquipment(equipment)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleViewEquipment(equipment)}>
               <Eye size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('equipment') && (
               <>
-                <Button size="sm" color="primary" variant="flat" onPress={() => handleEditEquipment(equipment)}>
+                <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditEquipment(equipment)}>
                   <Edit size={16} />
                 </Button>
                 <Select
@@ -409,14 +411,14 @@ export default function EquipmentPage() {
                       handleStatusChange(equipmentId, newStatus);
                     }
                   }}
-                >
+               >
                   <SelectItem key="operational">{t("equipment.operational")}</SelectItem>
                   <SelectItem key="maintenance">{t("equipment.maintenance")}</SelectItem>
                   <SelectItem key="out-of-order">{t("equipment.out_of_order")}</SelectItem>
                   <SelectItem key="retired">{t("equipment.retired")}</SelectItem>
                 </Select>
-                {getPermissionLevel(user) >= 3 && (
-                  <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteEquipment(equipment)}>
+                {can('equipment.delete') && (
+                  <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeleteEquipment(equipment)}>
                     <Trash2 size={16} />
                   </Button>
                 )}
@@ -448,20 +450,22 @@ export default function EquipmentPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("equipment.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("equipment.subtitle")}
           </p>
         </div>
-        {getPermissionLevel(user) >= 2 && (
+        {canWrite('equipment') && (
           <Button color="primary" onPress={handleAddEquipment}>
             <Plus className="mr-2" size={20} />
             {t("equipment.add_equipment")}
           </Button>
         )}
       </div>
+
+      <DataSummary entity="equipment" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -480,20 +484,20 @@ export default function EquipmentPage() {
               className="sm:w-48"
               selectedKeys={departmentFilter !== "all" ? [departmentFilter] : []}
               onSelectionChange={(keys) => setDepartmentFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("equipment.all_departments")}</SelectItem>
               {departments.map((department) => (
                 <SelectItem key={department.department_id || department._id || ""}>
                   {department.name}
                 </SelectItem>
-              ))}
+              )) as any}
             </Select>
             <Select
               placeholder={t("equipment.filter_by_status")}
               className="sm:w-48"
               selectedKeys={statusFilter !== "all" ? [statusFilter] : []}
               onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("equipment.all_status")}</SelectItem>
               <SelectItem key="operational">{t("equipment.operational")}</SelectItem>
               <SelectItem key="maintenance">{t("equipment.maintenance")}</SelectItem>
@@ -507,7 +511,7 @@ export default function EquipmentPage() {
       {/* Equipment Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Equipment table">
+          <Table aria-label="Equipment table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -517,7 +521,7 @@ export default function EquipmentPage() {
               isLoading={loading}
               loadingContent={t("equipment.loading_equipment")}
               emptyContent={t("equipment.no_equipment")}
-            >
+           >
               {equipment.map((item) => (
                 <TableRow key={item.id || item.equipment_id}>
                   {columns.map((column) => (
@@ -531,8 +535,8 @@ export default function EquipmentPage() {
           </Table>
 
           {equipment.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center p-4">
-              <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} />
+            <div className="flex justify-center border-t border-divider p-3">
+              <Pagination isCompact showControls total={totalPages} page={currentPage} onChange={setCurrentPage} />
             </div>
           )}
         </CardBody>
@@ -547,7 +551,7 @@ export default function EquipmentPage() {
           <ModalBody>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   label={t("equipment.name")}
                   placeholder={t("equipment.name_placeholder")}
                   value={formData.name}
@@ -556,7 +560,7 @@ export default function EquipmentPage() {
                   className="md:col-span-2"
                 />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   label={t("equipment.manufacturer")}
                   placeholder={t("equipment.manufacturer_placeholder")}
                   value={formData.manufacturer}
@@ -564,7 +568,7 @@ export default function EquipmentPage() {
                   isRequired
                 />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   label={t("equipment.model")}
                   placeholder={t("equipment.model_placeholder")}
                   value={formData.model}
@@ -572,7 +576,7 @@ export default function EquipmentPage() {
                   isRequired
                 />
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("equipment.department")}
                   placeholder={t("equipment.select_department")}
                   selectedKeys={formData.department_id ? [formData.department_id] : []}
@@ -581,7 +585,7 @@ export default function EquipmentPage() {
                     setFormData({ ...formData, department_id: newDeptId, room_id: "" });
                   }}
                   isRequired
-                >
+               >
                   {departments.map((department) => (
                     <SelectItem key={department.department_id || department._id || ""}>
                       {department.name}
@@ -589,13 +593,13 @@ export default function EquipmentPage() {
                   ))}
                 </Select>
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("equipment.room")}
                   placeholder={t("equipment.select_room")}
                   selectedKeys={formData.room_id ? [formData.room_id] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, room_id: Array.from(keys)[0] as string || "" })}
                   isDisabled={!formData.department_id}
-                >
+               >
                   {getFilteredRooms().map((room) => (
                     <SelectItem key={room.room_id || room._id || ""}>
                       {room.room_number} - {room.room_type}
@@ -603,22 +607,22 @@ export default function EquipmentPage() {
                   ))}
                 </Select>
 
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t("equipment.purchase_date")}
                   value={formData.purchase_date}
                   onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
                   isRequired
-                />
+ />
 
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t("equipment.warranty_expiry")}
                   value={formData.warranty_expiry}
                   onChange={(e) => setFormData({ ...formData, warranty_expiry: e.target.value })}
-                />
+ />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   type="number"
                   label={t("equipment.cost")}
                   placeholder="0.00"
@@ -631,14 +635,14 @@ export default function EquipmentPage() {
                 />
               </div>
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("equipment.description")}
                 placeholder={t("equipment.description_placeholder")}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("equipment.maintenance_schedule")}
                 placeholder={t("equipment.maintenance_schedule_placeholder")}
                 value={formData.maintenance_schedule}
@@ -647,7 +651,7 @@ export default function EquipmentPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
+            <Button variant="light" onPress={onClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={handleSubmit}>
@@ -658,7 +662,7 @@ export default function EquipmentPage() {
       </Modal>
 
       {/* View Equipment Details Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("equipment.equipment_details")}</ModalHeader>
           <ModalBody>
@@ -679,8 +683,8 @@ export default function EquipmentPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("common.status")}</p>
-                    <Chip color={getStatusColor(equipmentToView.status || "")} size="sm">
-                      {t(`equipment.${equipmentToView.status}`) || equipmentToView.status}
+                    <Chip variant="flat" color={getStatusColor(equipmentToView.status || "")} size="sm">
+                      {te(`equipment.${equipmentToView.status}`, equipmentToView.status)}
                     </Chip>
                   </div>
                   <div>
@@ -734,14 +738,14 @@ export default function EquipmentPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("equipment.delete_equipment")}</ModalHeader>
           <ModalBody>
             <p>{t("equipment.delete_confirmation")}</p>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onDeleteClose}>
+            <Button variant="light" onPress={onDeleteClose}>
               {t("common.cancel")}
             </Button>
             <Button color="danger" onPress={confirmDeleteEquipment}>

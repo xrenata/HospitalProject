@@ -5,7 +5,6 @@ import {
   Card,
   CardBody,
   Button,
-  Chip,
   Pagination,
   Tabs,
   Tab,
@@ -16,8 +15,9 @@ import {
   Dropdown,
   DropdownTrigger,
   DropdownMenu,
-  DropdownItem,
-} from "@heroui/react";
+  DropdownItem
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { 
   AlertTriangle, 
   CheckCircle, 
@@ -363,10 +363,10 @@ export default function AlertsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("alerts.title")}
           </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-foreground-500">
             {t("alerts.subtitle")}
           </p>
         </div>
@@ -378,7 +378,7 @@ export default function AlertsPage() {
             onPress={handleRefresh}
             isLoading={refreshing}
             startContent={!refreshing && <RefreshCw size={16} />}
-          >
+         >
             {t("alerts.refresh")}
           </Button>
           
@@ -388,7 +388,7 @@ export default function AlertsPage() {
               color="secondary"
               onPress={markAllAsRead}
               startContent={<CheckCircle size={16} />}
-            >
+           >
               {t("alerts.mark_all_read")}
             </Button>
           )}
@@ -411,36 +411,36 @@ export default function AlertsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardBody className="flex flex-row items-center space-x-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Bell className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-3 bg-default-100 rounded-lg">
+              <Bell className="h-6 w-6 text-foreground-500" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t("alerts.total_alerts")}</p>
-              <p className="text-2xl font-bold">{totalCount}</p>
+              <p className="text-sm text-foreground-500">{t("alerts.total_alerts")}</p>
+              <p className="text-2xl font-semibold">{totalCount}</p>
             </div>
           </CardBody>
         </Card>
         
         <Card>
           <CardBody className="flex flex-row items-center space-x-4">
-            <div className="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <Eye className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+            <div className="p-3 bg-default-100 rounded-lg">
+              <Eye className="h-6 w-6 text-foreground-500" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t("alerts.unread_alerts")}</p>
-              <p className="text-2xl font-bold text-orange-600">{unreadCount}</p>
+              <p className="text-sm text-foreground-500">{t("alerts.unread_alerts")}</p>
+              <p className="text-2xl font-semibold text-warning">{unreadCount}</p>
             </div>
           </CardBody>
         </Card>
         
         <Card>
           <CardBody className="flex flex-row items-center space-x-4">
-            <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
-              <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+            <div className="p-3 bg-default-100 rounded-lg">
+              <AlertTriangle className="h-6 w-6 text-foreground-500" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t("alerts.critical_alerts")}</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className="text-sm text-foreground-500">{t("alerts.critical_alerts")}</p>
+              <p className="text-2xl font-semibold text-danger">
                 {alerts.filter(a => a.type === 'critical').length}
               </p>
             </div>
@@ -460,7 +460,7 @@ export default function AlertsPage() {
               cursor: "w-full bg-primary-500",
               tab: "max-w-fit px-0 h-12",
             }}
-          >
+         >
             <Tab
               key="all"
               title={
@@ -509,7 +509,7 @@ export default function AlertsPage() {
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 {t("alerts.no_alerts")}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-foreground-500">
                 {selectedTab === 'all' 
                   ? t("alerts.no_alerts_message")
                   : selectedTab === 'unread' 
@@ -525,7 +525,7 @@ export default function AlertsPage() {
                   className={`p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 ${
                     !alert.isRead ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
                   }`}
-                >
+               >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-4 flex-1">
                       {/* Category Icon */}
@@ -555,7 +555,7 @@ export default function AlertsPage() {
                         </p>
                         
                         <div className="flex items-center gap-4 flex-wrap">
-                          <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                          <div className="flex items-center text-xs text-foreground-500">
                             <Clock className="h-3 w-3 mr-1" />
                             {formatTimeAgo(alert.timestamp)}
                           </div>
@@ -564,7 +564,7 @@ export default function AlertsPage() {
                             size="sm"
                             color={getPriorityColor(alert.priority) as any}
                             variant="flat"
-                          >
+                         >
                             {t("alerts.priority_label", { 
                               priority: t(`alerts.priority.${alert.priority}`)
                             })}
@@ -591,7 +591,7 @@ export default function AlertsPage() {
                             color="primary"
                             isIconOnly
                             onPress={() => markAsRead(alert.id)}
-                          >
+                         >
                             <Eye size={16} />
                           </Button>
                         </Tooltip>
@@ -609,17 +609,17 @@ export default function AlertsPage() {
                               key="mark-read"
                               startContent={<Eye size={16} />}
                               onPress={() => markAsRead(alert.id)}
-                            >
+                           >
                               {t("alerts.mark_as_read")}
                             </DropdownItem>
-                          )}
+                          ) as any}
                           <DropdownItem
                             key="delete"
                             className="text-danger"
                             color="danger"
                             startContent={<Trash2 size={16} />}
                             onPress={() => deleteAlert(alert.id)}
-                          >
+                         >
                             {t("alerts.delete")}
                           </DropdownItem>
                         </DropdownMenu>

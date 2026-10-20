@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -22,8 +21,9 @@ import {
   useDisclosure,
   Select,
   SelectItem,
-  Textarea,
-} from "@heroui/react";
+  Textarea
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { Heart, Search, Trash2, Edit, Plus, Eye } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -34,9 +34,11 @@ import { formatDate, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 import PatientAutocomplete from "@/components/PatientAutocomplete";
 
+import DataSummary from "@/components/DataSummary";
+import DateField from '@/components/DateField';
 export default function TreatmentsPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
+  const { user, can, canWrite } = useAuth();
+  const { t, te } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [treatments, setTreatments] = useState<Treatment[]>([]);
@@ -347,8 +349,8 @@ export default function TreatmentsPage() {
         );
       case "status":
         return (
-          <Chip color={getStatusColor(treatment.status || "")} size="sm">
-            {t(`treatments.${treatment.status}`) || treatment.status || "ongoing"}
+          <Chip variant="flat" color={getStatusColor(treatment.status || "")} size="sm">
+            {te(`treatments.${treatment.status}`, treatment.status || "ongoing")}
           </Chip>
         );
       case "cost":
@@ -357,13 +359,13 @@ export default function TreatmentsPage() {
         const treatmentId = treatment.treatment_id || treatment._id || treatment.id?.toString() || "";
         return (
           <div className="flex gap-2 items-center">
-            <Button size="sm" color="secondary" variant="flat" onPress={() => handleViewTreatment(treatment)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleViewTreatment(treatment)}>
               <Eye size={16} />
             </Button>
-            <Button size="sm" color="primary" variant="flat" onPress={() => handleEditTreatment(treatment)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditTreatment(treatment)}>
               <Edit size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('treatments') && (
               <>
                 <Select
                   size="sm"
@@ -376,12 +378,12 @@ export default function TreatmentsPage() {
                       handleStatusChange(treatmentId, newStatus);
                     }
                   }}
-                >
+               >
                   <SelectItem key="ongoing">{t("treatments.ongoing")}</SelectItem>
                   <SelectItem key="completed">{t("treatments.completed")}</SelectItem>
                   <SelectItem key="cancelled">{t("treatments.cancelled")}</SelectItem>
                 </Select>
-                <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteTreatment(treatment)}>
+                <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeleteTreatment(treatment)}>
                   <Trash2 size={16} />
                 </Button>
               </>
@@ -408,10 +410,10 @@ export default function TreatmentsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("treatments.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("treatments.subtitle")}
           </p>
         </div>
@@ -420,6 +422,8 @@ export default function TreatmentsPage() {
           {t("treatments.add_treatment")}
         </Button>
       </div>
+
+      <DataSummary entity="treatments" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -438,7 +442,7 @@ export default function TreatmentsPage() {
               className="sm:w-48"
               selectedKeys={statusFilter !== "all" ? [statusFilter] : []}
               onSelectionChange={(keys) => setStatusFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("treatments.all_status")}</SelectItem>
               <SelectItem key="ongoing">{t("treatments.ongoing")}</SelectItem>
               <SelectItem key="completed">{t("treatments.completed")}</SelectItem>
@@ -451,7 +455,7 @@ export default function TreatmentsPage() {
       {/* Treatments Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Treatments table">
+          <Table aria-label="Treatments table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -461,7 +465,7 @@ export default function TreatmentsPage() {
               isLoading={loading}
               loadingContent={t("treatments.loading_treatments")}
               emptyContent={t("treatments.no_treatments")}
-            >
+           >
               {treatments.map((treatment) => (
                 <TableRow key={treatment.id || treatment.treatment_id}>
                   {columns.map((column) => (
@@ -475,8 +479,8 @@ export default function TreatmentsPage() {
           </Table>
 
           {treatments.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center p-4">
-              <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} />
+            <div className="flex justify-center border-t border-divider p-3">
+              <Pagination isCompact showControls total={totalPages} page={currentPage} onChange={setCurrentPage} />
             </div>
           )}
         </CardBody>
@@ -502,13 +506,13 @@ export default function TreatmentsPage() {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("treatments.staff_member")}
                   placeholder={t("treatments.select_staff")}
                   selectedKeys={formData.staff_id ? [formData.staff_id] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, staff_id: Array.from(keys)[0] as string || "" })}
                   isRequired
-                >
+               >
                   {staff.filter(s => s.status === 'active').map((staffMember) => (
                     <SelectItem key={staffMember._id || staffMember.staff_id || ""}>
                       {staffMember.name} ({staffMember.role})
@@ -517,29 +521,29 @@ export default function TreatmentsPage() {
                   ))}
                 </Select>
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   label={t("treatments.treatment_type")}
                   placeholder={t("treatments.treatment_type_placeholder")}
                   value={formData.treatment_type}
                   onChange={(e) => setFormData({ ...formData, treatment_type: e.target.value })}
                 />
 
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t("treatments.start_date")}
                   value={formData.start_date}
                   onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                   isRequired
-                />
+ />
 
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t("treatments.end_date")}
                   value={formData.end_date}
                   onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                />
+ />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   type="number"
                   label={t("treatments.cost")}
                   placeholder="0.00"
@@ -550,7 +554,7 @@ export default function TreatmentsPage() {
                 />
               </div>
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("treatments.description")}
                 placeholder={t("treatments.description_placeholder")}
                 value={formData.description}
@@ -558,21 +562,21 @@ export default function TreatmentsPage() {
                 isRequired
               />
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("treatments.diagnosis")}
                 placeholder={t("treatments.diagnosis_placeholder")}
                 value={formData.diagnosis}
                 onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
               />
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("treatments.medication")}
                 placeholder={t("treatments.medication_placeholder")}
                 value={formData.medication}
                 onChange={(e) => setFormData({ ...formData, medication: e.target.value })}
               />
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("treatments.notes")}
                 placeholder={t("treatments.notes_placeholder")}
                 value={formData.notes}
@@ -581,7 +585,7 @@ export default function TreatmentsPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
+            <Button variant="light" onPress={onClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={handleSubmit}>
@@ -592,7 +596,7 @@ export default function TreatmentsPage() {
       </Modal>
 
       {/* View Treatment Details Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("treatments.treatment_details")}</ModalHeader>
           <ModalBody>
@@ -613,8 +617,8 @@ export default function TreatmentsPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">{t("common.status")}</p>
-                    <Chip color={getStatusColor(treatmentToView.status || "")} size="sm">
-                      {t(`treatments.${treatmentToView.status}`) || treatmentToView.status}
+                    <Chip variant="flat" color={getStatusColor(treatmentToView.status || "")} size="sm">
+                      {te(`treatments.${treatmentToView.status}`, treatmentToView.status)}
                     </Chip>
                   </div>
                   <div>
@@ -670,14 +674,14 @@ export default function TreatmentsPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("treatments.delete_treatment")}</ModalHeader>
           <ModalBody>
             <p>{t("treatments.delete_confirmation")}</p>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onDeleteClose}>
+            <Button variant="light" onPress={onDeleteClose}>
               {t("common.cancel")}
             </Button>
             <Button color="danger" onPress={confirmDeleteTreatment}>

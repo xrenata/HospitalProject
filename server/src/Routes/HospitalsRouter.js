@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const {
+    getMine,
     getAllHospitals,
     getHospital,
     createHospital,
@@ -52,6 +53,8 @@ const {
  *                   example: "Database query failed"
  */
 router.get("/", getAllHospitals);
+
+router.get("/mine", getMine);
 
 /**
  * @swagger

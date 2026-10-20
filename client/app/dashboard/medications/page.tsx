@@ -12,7 +12,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Pagination,
   Modal,
   ModalContent,
@@ -22,8 +21,9 @@ import {
   useDisclosure,
   Select,
   SelectItem,
-  Textarea,
-} from "@heroui/react";
+  Textarea
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { Pill, Search, Trash2, Edit, Plus, Eye, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -33,8 +33,10 @@ import { Medication } from "@/types";
 import { formatDate, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 
+import DataSummary from "@/components/DataSummary";
+import DateField from '@/components/DateField';
 export default function MedicationsPage() {
-  const { user } = useAuth();
+  const { user, can, canWrite } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -311,15 +313,15 @@ export default function MedicationsPage() {
         const medicationId = medication.medication_id || medication._id || medication.id?.toString() || "";
         return (
           <div className="flex gap-2 items-center">
-            <Button size="sm" color="secondary" variant="flat" onPress={() => handleViewMedication(medication)}>
+            <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleViewMedication(medication)}>
               <Eye size={16} />
             </Button>
-            {getPermissionLevel(user) >= 2 && (
+            {canWrite('medications') && (
               <>
-                <Button size="sm" color="primary" variant="flat" onPress={() => handleEditMedication(medication)}>
+                <Button isIconOnly size="sm" variant="light" className="text-foreground-500 hover:text-primary" onPress={() => handleEditMedication(medication)}>
                   <Edit size={16} />
                 </Button>
-                <Button size="sm" color="danger" variant="flat" onPress={() => handleDeleteMedication(medication)}>
+                <Button isIconOnly size="sm" color="danger" variant="light" onPress={() => handleDeleteMedication(medication)}>
                   <Trash2 size={16} />
                 </Button>
               </>
@@ -345,20 +347,22 @@ export default function MedicationsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("medications.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("medications.subtitle")}
           </p>
         </div>
-        {getPermissionLevel(user) >= 2 && (
+        {canWrite('medications') && (
           <Button color="primary" onPress={handleAddMedication}>
             <Plus className="mr-2" size={20} />
             {t("medications.add_medication")}
           </Button>
         )}
       </div>
+
+      <DataSummary entity="medications" loading={loading} />
 
       {/* Search and Filters */}
       <Card>
@@ -377,13 +381,13 @@ export default function MedicationsPage() {
               className="sm:w-48"
               selectedKeys={categoryFilter !== "all" ? [categoryFilter] : []}
               onSelectionChange={(keys) => setCategoryFilter(Array.from(keys)[0] as string || "all")}
-            >
+           >
               <SelectItem key="all">{t("medications.all_categories")}</SelectItem>
               {medicationCategories.map((category) => (
                 <SelectItem key={category}>
                   {category}
                 </SelectItem>
-              ))}
+              )) as any}
             </Select>
           </div>
         </CardBody>
@@ -392,7 +396,7 @@ export default function MedicationsPage() {
       {/* Medications Table */}
       <Card>
         <CardBody className="p-0">
-          <Table aria-label="Medications table">
+          <Table aria-label="Medications table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
             <TableHeader>
               {columns.map((column) => (
                 <TableColumn key={column.key}>{column.label}</TableColumn>
@@ -402,7 +406,7 @@ export default function MedicationsPage() {
               isLoading={loading}
               loadingContent={t("medications.loading_medications")}
               emptyContent={t("medications.no_medications")}
-            >
+           >
               {medications.map((medication) => (
                 <TableRow key={medication.id || medication.medication_id}>
                   {columns.map((column) => (
@@ -416,8 +420,8 @@ export default function MedicationsPage() {
           </Table>
 
           {medications.length > 0 && totalPages > 1 && (
-            <div className="flex justify-center p-4">
-              <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} />
+            <div className="flex justify-center border-t border-divider p-3">
+              <Pagination isCompact showControls total={totalPages} page={currentPage} onChange={setCurrentPage} />
             </div>
           )}
         </CardBody>
@@ -432,7 +436,7 @@ export default function MedicationsPage() {
           <ModalBody>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   label={t("medications.name")}
                   placeholder={t("medications.name_placeholder")}
                   value={formData.name}
@@ -440,7 +444,7 @@ export default function MedicationsPage() {
                   isRequired
                 />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   label={t("medications.dosage")}
                   placeholder={t("medications.dosage_placeholder")}
                   value={formData.dosage}
@@ -448,7 +452,7 @@ export default function MedicationsPage() {
                   isRequired
                 />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   label={t("medications.manufacturer")}
                   placeholder={t("medications.manufacturer_placeholder")}
                   value={formData.manufacturer}
@@ -456,12 +460,12 @@ export default function MedicationsPage() {
                   isRequired
                 />
 
-                <Select
+                <Select labelPlacement="outside" variant="bordered"
                   label={t("medications.category")}
                   placeholder={t("medications.select_category")}
                   selectedKeys={formData.category ? [formData.category] : []}
                   onSelectionChange={(keys) => setFormData({ ...formData, category: Array.from(keys)[0] as string || "" })}
-                >
+               >
                   {medicationCategories.map((category) => (
                     <SelectItem key={category}>
                       {category}
@@ -469,15 +473,15 @@ export default function MedicationsPage() {
                   ))}
                 </Select>
 
-                <Input
-                  type="date"
+                <DateField
+                  
                   label={t("medications.expiry_date")}
                   value={formData.expiry_date}
                   onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
                   isRequired
-                />
+ />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   type="number"
                   label={t("medications.stock_quantity")}
                   placeholder="0"
@@ -486,7 +490,7 @@ export default function MedicationsPage() {
                   min="0"
                 />
 
-                <Input
+                <Input labelPlacement="outside" variant="bordered"
                   type="number"
                   label={t("medications.price")}
                   placeholder="0.00"
@@ -499,14 +503,14 @@ export default function MedicationsPage() {
                 />
               </div>
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("medications.description")}
                 placeholder={t("medications.description_placeholder")}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               />
 
-              <Textarea
+              <Textarea minRows={3} labelPlacement="outside" variant="bordered"
                 label={t("medications.side_effects")}
                 placeholder={t("medications.side_effects_placeholder")}
                 value={formData.side_effects}
@@ -515,7 +519,7 @@ export default function MedicationsPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onClose}>
+            <Button variant="light" onPress={onClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={handleSubmit}>
@@ -526,7 +530,7 @@ export default function MedicationsPage() {
       </Modal>
 
       {/* View Medication Details Modal */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="2xl" scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("medications.medication_details")}</ModalHeader>
           <ModalBody>
@@ -592,14 +596,14 @@ export default function MedicationsPage() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("medications.delete_medication")}</ModalHeader>
           <ModalBody>
             <p>{t("medications.delete_confirmation")}</p>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onDeleteClose}>
+            <Button variant="light" onPress={onDeleteClose}>
               {t("common.cancel")}
             </Button>
             <Button color="danger" onPress={confirmDeleteMedication}>

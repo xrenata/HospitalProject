@@ -1,12 +1,21 @@
 import { format, parseISO, isValid } from 'date-fns';
+import { enUS, tr } from 'date-fns/locale';
 import { PermissionLevel } from '@/types';
 
 // Date formatting utilities
+const currentLocale = () => {
+  try {
+    return localStorage.getItem('language') === 'tr' ? tr : enUS;
+  } catch {
+    return enUS;
+  }
+};
+
 export const formatDate = (date: string | Date, formatStr: string = 'PPP'): string => {
   try {
     const dateObj = typeof date === 'string' ? parseISO(date) : date;
     if (!isValid(dateObj)) return 'Invalid Date';
-    return format(dateObj, formatStr);
+    return format(dateObj, formatStr, { locale: currentLocale() });
   } catch (error) {
     return 'Invalid Date';
   }
@@ -204,4 +213,22 @@ export const debounce = <T extends (...args: any[]) => any>(
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);
   };
+};
+// "5 minutes ago" in the current language, from an ISO timestamp
+export const relativeTime = (value: string | Date | undefined, language: string): string => {
+  if (!value) return '';
+  const date = typeof value === 'string' ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return '';
+
+  const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+  const rtf = new Intl.RelativeTimeFormat(language === 'tr' ? 'tr' : 'en', { numeric: 'auto' });
+  const steps: [Intl.RelativeTimeFormatUnit, number][] = [
+    ['year', 31536000], ['month', 2592000], ['day', 86400], ['hour', 3600], ['minute', 60],
+  ];
+
+  for (const [unit, size] of steps) {
+    if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit);
+  }
+
+  return rtf.format(seconds, 'second');
 };

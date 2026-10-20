@@ -15,9 +15,9 @@ import {
   Select,
   SelectItem,
   Textarea,
-  Chip,
-  Divider,
-} from "@heroui/react";
+  Divider
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { Building2, Edit, Save, Plus, Trash2, Globe, Mail, Phone, MapPin, Users, Bed, Calendar } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
@@ -26,9 +26,10 @@ import { HospitalInfo, Department, Staff } from "@/types";
 import { formatDate, getPermissionLevel } from "@/lib/utils";
 import toast from "react-hot-toast";
 
+import DateField from '@/components/DateField';
 export default function HospitalInfoPage() {
-  const { user } = useAuth();
-  const { t } = useI18n();
+  const { user, can, canWrite } = useAuth();
+  const { t, te } = useI18n();
   const [hospitalInfo, setHospitalInfo] = useState<HospitalInfo | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -86,7 +87,7 @@ export default function HospitalInfoPage() {
           email: hospitalData.email || "",
           website: hospitalData.website || "",
           established_date: hospitalData.established_date || hospitalData.establishedDate ? (hospitalData.established_date || hospitalData.establishedDate)!.split("T")[0] : "",
-          bed_capacity: hospitalData.bed_capacity || hospitalData.bedCapacity ? (hospitalData.bed_capacity || hospitalData.bedCapacity)!.toString() : "",
+          bed_capacity: hospitalData.bed_capacity || hospitalData.bedCapacity ? (hospitalData.bed_capacity || hospitalData.bedCapacity)!.toString() : hospitalData.capacity ? String(hospitalData.capacity) : "",
           director_name: hospitalData.director_name || hospitalData.directorName || "",
           description: hospitalData.description || "",
         });
@@ -130,7 +131,7 @@ export default function HospitalInfoPage() {
   };
 
   const handleEdit = () => {
-    if (getPermissionLevel(user) < 3) {
+    if (!can('hospital.edit')) {
       toast.error(t("hospital.insufficient_permissions"));
       return;
     }
@@ -139,7 +140,7 @@ export default function HospitalInfoPage() {
   };
 
   const handleSave = async () => {
-    if (getPermissionLevel(user) < 3) {
+    if (!can('hospital.edit')) {
       toast.error(t("hospital.insufficient_permissions"));
       return;
     }
@@ -232,14 +233,14 @@ export default function HospitalInfoPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("hospital.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-sm text-foreground-500 mt-1">
             {t("hospital.subtitle")}
           </p>
         </div>
-        {getPermissionLevel(user) >= 3 && (
+        {can('hospital.edit') && (
           <Button color="primary" onPress={handleEdit}>
             <Edit className="mr-2" size={20} />
             {hospitalInfo ? t("hospital.edit_info") : t("hospital.add_info")}
@@ -263,7 +264,7 @@ export default function HospitalInfoPage() {
                       <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
                         {hospitalInfo.name}
                       </h2>
-                      <p className="text-gray-600 dark:text-gray-400 mt-1">
+                      <p className="text-sm text-foreground-500 mt-1">
                         {hospitalInfo.description}
                       </p>
                     </div>
@@ -305,7 +306,7 @@ export default function HospitalInfoPage() {
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="text-primary hover:underline"
-                            >
+                           >
                               {hospitalInfo.website}
                             </a>
                           ) : "-"}
@@ -338,42 +339,42 @@ export default function HospitalInfoPage() {
                 {/* Stats */}
                 <div className="lg:w-72">
                   <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-                    <Card className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-800">
+                    <Card>
                       <CardBody className="p-4 text-center">
-                        <Bed className="mx-auto mb-2 text-blue-600" size={24} />
-                        <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                          {hospitalInfo.bed_capacity || hospitalInfo.bedCapacity || 0}
+                        <Bed className="mx-auto mb-2 text-foreground-500" size={24} />
+                        <p className="text-2xl font-semibold text-foreground">
+                          {hospitalInfo.bed_capacity || hospitalInfo.bedCapacity || (hospitalInfo as any).capacity || 0}
                         </p>
-                        <p className="text-sm text-blue-700 dark:text-blue-300">{t("hospital.bed_capacity")}</p>
+                        <p className="text-sm text-foreground-500">{t("hospital.bed_capacity")}</p>
                       </CardBody>
                     </Card>
 
-                    <Card className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200 dark:border-green-800">
+                    <Card>
                       <CardBody className="p-4 text-center">
-                        <Users className="mx-auto mb-2 text-green-600" size={24} />
-                        <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                        <Users className="mx-auto mb-2 text-foreground-500" size={24} />
+                        <p className="text-2xl font-semibold text-foreground">
                           {getActiveStaffCount()}
                         </p>
-                        <p className="text-sm text-green-700 dark:text-green-300">{t("hospital.staff_count")}</p>
+                        <p className="text-sm text-foreground-500">{t("hospital.staff_count")}</p>
                       </CardBody>
                     </Card>
 
-                    <Card className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800">
+                    <Card>
                       <CardBody className="p-4 text-center">
-                        <Building2 className="mx-auto mb-2 text-purple-600" size={24} />
-                        <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                        <Building2 className="mx-auto mb-2 text-foreground-500" size={24} />
+                        <p className="text-2xl font-semibold text-foreground">
                           {getActiveDepartments()}
                         </p>
-                        <p className="text-sm text-purple-700 dark:text-purple-300">{t("hospital.departments")}</p>
+                        <p className="text-sm text-foreground-500">{t("hospital.departments")}</p>
                       </CardBody>
                     </Card>
 
-                    <Card className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800">
+                    <Card>
                       <CardBody className="p-4 text-center">
                         <Chip className="mx-auto mb-2" color="success" variant="flat">
-                          {t(`hospital.${hospitalInfo.status}`) || hospitalInfo.status || "active"}
+                          {te(`hospital.${hospitalInfo.status}`, hospitalInfo.status || "active")}
                         </Chip>
-                        <p className="text-sm text-orange-700 dark:text-orange-300">{t("common.status")}</p>
+                        <p className="text-sm text-foreground-500">{t("common.status")}</p>
                       </CardBody>
                     </Card>
                   </div>
@@ -430,7 +431,7 @@ export default function HospitalInfoPage() {
             <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
               {t("hospital.no_info_description")}
             </p>
-            {getPermissionLevel(user) >= 3 && (
+            {can('hospital.edit') && (
               <Button color="primary" onPress={handleEdit}>
                 <Plus className="mr-2" size={20} />
                 {t("hospital.add_info")}
@@ -483,12 +484,12 @@ export default function HospitalInfoPage() {
                     onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                   />
 
-                  <Input
-                    type="date"
+                  <DateField
+                    
                     label={t("hospital.established_date")}
                     value={formData.established_date}
                     onChange={(e) => setFormData({ ...formData, established_date: e.target.value })}
-                  />
+ />
 
                   <Input
                     type="number"
@@ -544,7 +545,7 @@ export default function HospitalInfoPage() {
                         color="primary" 
                         variant="flat"
                         onClose={() => handleRemoveService(service)}
-                      >
+                     >
                         {service}
                       </Chip>
                     ))}
@@ -573,7 +574,7 @@ export default function HospitalInfoPage() {
                         color="success" 
                         variant="flat"
                         onClose={() => handleRemoveAccreditation(accreditation)}
-                      >
+                     >
                         {accreditation}
                       </Chip>
                     ))}
@@ -597,7 +598,7 @@ export default function HospitalInfoPage() {
       </Modal>
 
       {/* Add Service Modal */}
-      <Modal isOpen={isServiceOpen} onClose={onServiceClose}>
+      <Modal isOpen={isServiceOpen} onClose={onServiceClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("hospital.add_service")}</ModalHeader>
           <ModalBody>
@@ -610,7 +611,7 @@ export default function HospitalInfoPage() {
             />
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onServiceClose}>
+            <Button variant="light" onPress={onServiceClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={() => { handleAddService(); onServiceClose(); }}>
@@ -621,7 +622,7 @@ export default function HospitalInfoPage() {
       </Modal>
 
       {/* Add Accreditation Modal */}
-      <Modal isOpen={isAccreditationOpen} onClose={onAccreditationClose}>
+      <Modal isOpen={isAccreditationOpen} onClose={onAccreditationClose} scrollBehavior="inside">
         <ModalContent>
           <ModalHeader>{t("hospital.add_accreditation")}</ModalHeader>
           <ModalBody>
@@ -634,7 +635,7 @@ export default function HospitalInfoPage() {
             />
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" variant="light" onPress={onAccreditationClose}>
+            <Button variant="light" onPress={onAccreditationClose}>
               {t("common.cancel")}
             </Button>
             <Button color="primary" onPress={() => { handleAddAccreditation(); onAccreditationClose(); }}>

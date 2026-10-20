@@ -152,7 +152,7 @@ export default function PatientAutocomplete({
         startContent={<Search size={16} className="text-gray-400" />}
         isRequired={isRequired}
         errorMessage={errorMessage}
-        description={searchTerm.length < 2 ? "En az 2 karakter girin" : ""}
+        description={searchTerm.length < 2 ? t("patients.search_hint") : ""}
       />
 
       {showSuggestions && suggestions.length > 0 && (

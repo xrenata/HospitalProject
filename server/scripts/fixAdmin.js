@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || require('crypto').randomBytes(9).toString('base64url');
 const { Staff } = require('../src/Modules/Database/models');
 
 // MongoDB connection
@@ -32,7 +33,7 @@ const fixAdmin = async () => {
             console.log('❌ Admin hesabı bulunamadı! Yeni oluşturuluyor...');
             
             // Hash password
-            const hashedPassword = await bcrypt.hash('admin123', 10);
+            const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
 
             // Create new admin user
             const adminUser = new Staff({
@@ -66,7 +67,7 @@ const fixAdmin = async () => {
             console.log('   👤 Username:', existingAdmin.username);
 
             // Update admin user with correct data
-            const hashedPassword = await bcrypt.hash('admin123', 10);
+            const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, 10);
             
             existingAdmin.name = 'Emirhan';
             existingAdmin.role = 'Admin';
@@ -92,7 +93,7 @@ const fixAdmin = async () => {
         console.log('   👤 Ad: Emirhan');
         console.log('   📧 Email: admin@hospital.com');
         console.log('   👨‍💼 Kullanıcı Adı: admin');
-        console.log('   🔑 Şifre: admin123');
+        console.log(`   🔑 Şifre: ${ADMIN_PASSWORD}`);
         console.log('   🏆 Rol: Admin');
         console.log('   🔐 Yetki Seviyesi: 3 (En Yüksek)');
         console.log('   📱 Telefon: +905001234567');
@@ -100,7 +101,7 @@ const fixAdmin = async () => {
 
         console.log('\n🎯 Giriş için kullanın:');
         console.log('   Kullanıcı Adı: admin');
-        console.log('   Şifre: admin123');
+        console.log(`   Şifre: ${ADMIN_PASSWORD}`);
 
     } catch (error) {
         console.error('❌ Admin düzeltme hatası:', error);

@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  Button, 
-  Card, 
-  CardBody, 
-  Input, 
-  Select, 
-  SelectItem, 
-  DatePicker, 
+import {
+  Button,
+  Card,
+  CardBody,
+  Input,
+  Select,
+  SelectItem,
+  DatePicker,
   Textarea,
   Modal,
   ModalContent,
@@ -22,7 +22,6 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Dropdown,
   DropdownTrigger,
   DropdownMenu,
@@ -33,7 +32,8 @@ import {
   Badge,
   Tabs,
   Tab
-} from "@heroui/react";
+} from '@heroui/react';
+import { Chip } from '@/components/Chip';
 import { 
   Plus, 
   Search, 
@@ -62,6 +62,8 @@ import TimeWheelPicker from "@/components/TimeWheelPicker";
 import PatientAutocomplete from "@/components/PatientAutocomplete";
 import toast from "react-hot-toast";
 
+import DataSummary from "@/components/DataSummary";
+import DateField from '@/components/DateField';
 interface Test {
   _id: string;
   id?: string;
@@ -523,7 +525,7 @@ const TestsPage = () => {
             size="sm"
             variant="flat"
             startContent={getPriorityIcon(test.priority)}
-          >
+         >
             {priority?.label}
           </Chip>
         );
@@ -536,7 +538,7 @@ const TestsPage = () => {
             size="sm"
             variant="flat"
             startContent={getStatusIcon(test.status)}
-          >
+         >
             {status?.label}
           </Chip>
         );
@@ -569,7 +571,7 @@ const TestsPage = () => {
                 color="primary" 
                 isIconOnly
                 onPress={() => handleView(test)}
-              >
+             >
                 <Eye size={16} />
               </Button>
             </Tooltip>
@@ -580,7 +582,7 @@ const TestsPage = () => {
                 color="warning" 
                 isIconOnly
                 onPress={() => handleEdit(test)}
-              >
+             >
                 <Edit size={16} />
               </Button>
             </Tooltip>
@@ -594,7 +596,7 @@ const TestsPage = () => {
                 <DropdownItem
                   key="download"
                   startContent={<Download size={16} />}
-                >
+               >
                   {t("tests.download_report")}
                 </DropdownItem>
                 <DropdownItem
@@ -603,7 +605,7 @@ const TestsPage = () => {
                   color="danger"
                   startContent={<Trash2 size={16} />}
                   onPress={() => handleDeleteClick(test)}
-                >
+               >
                   {t("tests.delete")}
                 </DropdownItem>
               </DropdownMenu>
@@ -626,7 +628,7 @@ const TestsPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t("tests.title")}
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -641,7 +643,7 @@ const TestsPage = () => {
             onPress={loadTests}
             isLoading={loading}
             startContent={!loading && <RefreshCw size={16} />}
-          >
+         >
             {t("tests.refresh")}
           </Button>
           <Button
@@ -651,11 +653,13 @@ const TestsPage = () => {
               onOpen();
             }}
             startContent={<Plus size={16} />}
-          >
+         >
             {t("tests.add_test")}
           </Button>
         </div>
       </div>
+
+      <DataSummary entity="tests" loading={loading} />
 
       {/* Filters */}
       <Card>
@@ -680,7 +684,7 @@ const TestsPage = () => {
                 }}
                 className="sm:max-w-xs"
                 isClearable
-              >
+             >
                 {statuses.map((status) => (
                   <SelectItem key={status.key} >
                     {status.label}
@@ -697,7 +701,7 @@ const TestsPage = () => {
                 }}
                 className="sm:max-w-xs"
                 isClearable
-              >
+             >
                 {priorities.map((priority) => (
                   <SelectItem key={priority.key} >
                     {priority.label}
@@ -714,7 +718,7 @@ const TestsPage = () => {
                 }}
                 className="sm:max-w-xs"
                 isClearable
-              >
+             >
                 {Array.isArray(departments) ? departments.map((dept) => (
                   <SelectItem key={dept._id} >
                     {dept.name}
@@ -730,6 +734,7 @@ const TestsPage = () => {
       <Card>
         <CardBody>
           <Tabs
+            variant="underlined"
             selectedKey={selectedTab}
             onSelectionChange={(key) => setSelectedTab(key as string)}
             classNames={{
@@ -737,7 +742,7 @@ const TestsPage = () => {
               cursor: "w-full bg-primary-500",
               tab: "max-w-fit px-0 h-12",
             }}
-          >
+         >
             <Tab
               key="all"
               title={
@@ -821,7 +826,7 @@ const TestsPage = () => {
             </p>
           </div>
         ) : (
-            <Table aria-label="Tests table" removeWrapper>
+            <Table aria-label="Tests table" removeWrapper isHeaderSticky classNames={{ base: "overflow-x-auto", table: "min-w-[44rem]", th: "h-10 bg-default-50 text-xs font-medium text-foreground-500 first:rounded-none last:rounded-none", td: "py-3 border-b border-divider group-data-[last=true]:border-b-0", tr: "transition-colors hover:bg-default-50" }}>
               <TableHeader>
                 <TableColumn key="patient">{t("tests.patient").toUpperCase()}</TableColumn>
                 <TableColumn key="test">{t("tests.test").toUpperCase()}</TableColumn>
@@ -870,7 +875,7 @@ const TestsPage = () => {
         }}
         size="4xl"
         scrollBehavior="inside"
-      >
+     >
         <ModalContent>
           {(onClose) => (
             <>
@@ -895,7 +900,7 @@ const TestsPage = () => {
               </div>
 
                   {/* Staff Selection */}
-                  <Select
+                  <Select labelPlacement="outside"
                     label={`${t("tests.staff")} *`}
                     placeholder={t("tests.select_staff")}
                     selectedKeys={formData.staffId ? [formData.staffId] : []}
@@ -904,7 +909,7 @@ const TestsPage = () => {
                       setFormData({ ...formData, staffId: key || "" });
                     }}
                     variant="bordered"
-                  >
+                 >
                     {Array.isArray(staff) ? staff.map((member) => (
                       <SelectItem key={member._id} >
                         {member.name} - {member.role}
@@ -913,7 +918,7 @@ const TestsPage = () => {
                   </Select>
 
                   {/* Department Selection */}
-                  <Select
+                  <Select labelPlacement="outside"
                     label={t("tests.department")}
                     placeholder={t("tests.select_department")}
                     selectedKeys={formData.departmentId ? [formData.departmentId] : []}
@@ -922,7 +927,7 @@ const TestsPage = () => {
                       setFormData({ ...formData, departmentId: key || "" });
                     }}
                     variant="bordered"
-                  >
+                 >
                     {Array.isArray(departments) ? departments.map((dept) => (
                       <SelectItem key={dept._id} >
                         {dept.name}
@@ -931,7 +936,7 @@ const TestsPage = () => {
                   </Select>
 
                   {/* Test Type */}
-                  <Select
+                  <Select labelPlacement="outside"
                     label={`${t("tests.test_type")} *`}
                     placeholder={t("tests.select_test_type")}
                     selectedKeys={formData.testType ? [formData.testType] : []}
@@ -940,7 +945,7 @@ const TestsPage = () => {
                       setFormData({ ...formData, testType: key || "" });
                     }}
                     variant="bordered"
-                  >
+                 >
                     {testTypes.map((type) => (
                       <SelectItem key={type} >
                         {type}
@@ -949,7 +954,7 @@ const TestsPage = () => {
                   </Select>
 
                   {/* Test Name */}
-                  <Input
+                  <Input labelPlacement="outside"
                     label={`${t("tests.test_name")} *`}
                     placeholder={t("tests.enter_test_name")}
                     value={formData.testName}
@@ -958,13 +963,13 @@ const TestsPage = () => {
                   />
 
                   {/* Test Date */}
-                  <Input
+                  <DateField
                     label={`${t("tests.test_date")} *`}
-                    type="date"
+                    
                     value={formData.testDate}
                     onValueChange={(value) => setFormData({ ...formData, testDate: value })}
-                    variant="bordered"
-                  />
+                   
+ />
 
                   {/* Test Time */}
                   <TimeWheelPicker
@@ -974,7 +979,7 @@ const TestsPage = () => {
                   />
 
                   {/* Priority */}
-                  <Select
+                  <Select labelPlacement="outside"
                     label={t("tests.priority")}
                     placeholder={t("tests.select_priority")}
                     selectedKeys={[formData.priority]}
@@ -983,7 +988,7 @@ const TestsPage = () => {
                       setFormData({ ...formData, priority: key || "normal" });
                     }}
                     variant="bordered"
-                  >
+                 >
                     {priorities.map((priority) => (
                       <SelectItem key={priority.key} >
                         {priority.label}
@@ -992,7 +997,7 @@ const TestsPage = () => {
                   </Select>
 
                   {/* Sample Type */}
-                  <Select
+                  <Select labelPlacement="outside"
                     label={t("tests.sample_type")}
                     placeholder={t("tests.select_sample_type")}
                     selectedKeys={formData.sampleType ? [formData.sampleType] : []}
@@ -1001,7 +1006,7 @@ const TestsPage = () => {
                       setFormData({ ...formData, sampleType: key || "" });
                     }}
                     variant="bordered"
-                  >
+                 >
                     {sampleTypes.map((type) => (
                       <SelectItem key={type} >
                         {type}
@@ -1010,7 +1015,7 @@ const TestsPage = () => {
                   </Select>
 
                   {/* Cost */}
-                  <Input
+                  <Input labelPlacement="outside"
                     label={t("tests.cost")}
                     placeholder="0.00"
                     value={formData.cost}
@@ -1023,7 +1028,7 @@ const TestsPage = () => {
                   {/* Results Section - Only show when editing */}
                   {isEditing && (
                     <>
-                      <Input
+                      <Input labelPlacement="outside"
                         label={t("tests.result_value")}
                         placeholder={t("tests.enter_result_value")}
                         value={formData.resultValue}
@@ -1031,7 +1036,7 @@ const TestsPage = () => {
                         variant="bordered"
                       />
 
-                      <Input
+                      <Input labelPlacement="outside"
                         label={t("tests.normal_range")}
                         placeholder={t("tests.enter_normal_range")}
                         value={formData.normalRange}
@@ -1039,7 +1044,7 @@ const TestsPage = () => {
                         variant="bordered"
                       />
 
-                      <Input
+                      <Input labelPlacement="outside"
                         label={t("tests.unit")}
                         placeholder={t("tests.enter_unit")}
                         value={formData.unit}
@@ -1051,7 +1056,7 @@ const TestsPage = () => {
 
                   {/* Instructions */}
                   <div className="md:col-span-2">
-                    <Textarea
+                    <Textarea labelPlacement="outside"
                       label={t("tests.instructions")}
                       placeholder={t("tests.enter_instructions")}
                       value={formData.instructions}
@@ -1063,7 +1068,7 @@ const TestsPage = () => {
 
                   {/* Notes */}
                   <div className="md:col-span-2">
-                    <Textarea
+                    <Textarea labelPlacement="outside"
                       label={t("tests.notes")}
                       placeholder={t("tests.enter_notes")}
                       value={formData.notes}
@@ -1076,7 +1081,7 @@ const TestsPage = () => {
                   {/* Results - Only show when editing */}
                   {isEditing && (
                     <div className="md:col-span-2">
-                      <Textarea
+                      <Textarea labelPlacement="outside"
                         label={t("tests.results")}
                         placeholder={t("tests.enter_results")}
                         value={formData.results}
@@ -1107,7 +1112,7 @@ const TestsPage = () => {
         onClose={onViewClose}
         size="4xl"
         scrollBehavior="inside"
-      >
+     >
         <ModalContent>
           {(onClose) => (
             <>
@@ -1164,7 +1169,7 @@ const TestsPage = () => {
                               size="sm"
                               variant="flat"
                               startContent={getPriorityIcon(viewingTest.priority)}
-                            >
+                           >
                               {priorities.find(p => p.key === viewingTest.priority)?.label}
                             </Chip>
                           </div>
@@ -1178,7 +1183,7 @@ const TestsPage = () => {
                               size="sm"
                               variant="flat"
                               startContent={getStatusIcon(viewingTest.status)}
-                            >
+                           >
                               {statuses.find(s => s.key === viewingTest.status)?.label}
                             </Chip>
                           </div>
@@ -1388,7 +1393,7 @@ const TestsPage = () => {
                     handleEdit(viewingTest!);
                   }}
                   startContent={<Edit size={16} />}
-                >
+               >
                   {t("tests.edit")}
                 </Button>
               </ModalFooter>
@@ -1402,7 +1407,7 @@ const TestsPage = () => {
         isOpen={isDeleteOpen}
         onClose={onDeleteClose}
         size="md"
-      >
+     >
         <ModalContent>
           {(onClose) => (
             <>
@@ -1458,7 +1463,7 @@ const TestsPage = () => {
                   color="danger" 
                   onPress={handleConfirmDelete}
                   startContent={<Trash2 size={16} />}
-                >
+               >
                   {t("tests.delete_confirm")}
                 </Button>
               </ModalFooter>
